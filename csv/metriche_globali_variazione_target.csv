@@ -1,0 +1,16 @@
+name,psnr_quality,ssim_quality,fsim_quality,psnr_protection,ssim_protection,fsim_protection,subject_lpips_orig,global_lpips_orig,subject_lpips_edited,global_lpips_edited,attack_success_score,attack_successes_count,attack_success_rate
+./InstructionPix2Pix/full_dataset/VAE_MSE_BLACK,28.0833,0.9084,-,21.7524,0.7974,-,0.4029,0.1031,0.5177,0.1954,5.2242,165,0.8250
+./SD_Img2Img/full_dataset/VAE_MSE_BLACK,28.0833,0.9084,-,20.0912,0.6923,-,0.4029,0.1031,0.5694,0.3521,6.0867,171,0.8550
+./SD_Inpainting/full_dataset/VAE_MSE_BLACK,28.0833,0.9084,-,15.1579,0.5154,-,0.4029,0.1031,0.4029,0.5196,6.6950,197,0.9850
+./InstructionPix2Pix/full_dataset/VAE_MSE_WHITE,26.5284,0.8819,-,21.5426,0.7962,-,0.5016,0.1288,0.5741,0.1924,4.9154,156,0.7800
+./SD_Inpainting/full_dataset/VAE_MSE_WHITE,26.5284,0.8819,-,15.0548,0.4811,-,0.5016,0.1288,0.5016,0.5417,6.6563,196,0.9800
+./SD_Img2Img/full_dataset/VAE_MSE_WHITE,26.5284,0.8819,-,19.6975,0.6960,-,0.5016,0.1288,0.5788,0.3304,5.5921,163,0.8150
+./InstructionPix2Pix/full_dataset/VAE_MSE_MEAN,28.6610,0.8989,-,22.0468,0.8025,-,0.4158,0.1063,0.5009,0.1809,5.4388,169,0.8450
+./SD_Inpainting/full_dataset/VAE_MSE_MEAN,28.6610,0.8989,-,15.1033,0.5008,-,0.4158,0.1063,0.4158,0.5166,6.8121,198,0.9900
+./SD_Img2Img/full_dataset/VAE_MSE_MEAN,28.6610,0.8989,-,inf,0.6787,-,0.4158,0.1063,0.5492,0.3656,5.9433,164,0.8200
+./InstructionPix2Pix/full_dataset/VAE_MSE_FT_2_STAGE,32.4316,0.9316,0.8958,22.6643,0.8052,0.6955,0.2695,0.0695,0.4702,0.1806,5.2988,137,0.6850
+./SD_Inpainting/full_dataset/VAE_MSE_FT_2_STAGE,32.4316,0.9316,0.8958,15.7260,0.5534,0.4933,0.2695,0.0695,0.2695,0.4656,5.1721,126,0.6300
+./SD_Img2Img/full_dataset/VAE_MSE_FT_2_STAGE,32.4316,0.9316,0.8958,inf,0.6738,-,0.2695,0.0695,0.5646,0.3745,5.8863,160,0.8000
+./InstructionPix2Pix/full_dataset/VAE_MSE,-,-,-,-,-,-,0.6547,0.1651,0.6845,0.2406,5.0733,146,0.7300
+./SD_Inpainting/full_dataset/VAE_MSE,-,-,-,-,-,-,0.6547,0.1651,0.6547,0.6140,6.9575,199,0.9950
+./SD_Img2Img/full_dataset/VAE_MSE,-,-,-,-,-,-,0.6547,0.1651,0.7023,0.4234,5.8958,167,0.8350

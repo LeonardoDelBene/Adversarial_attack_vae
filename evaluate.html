@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Confronto immagini — Edited / Original / Immunized</title>
+  <style>
+    :root{--accent:#0a4aac}
+    body{font-family:Inter,Arial,sans-serif;margin:18px;background:#f6f8fb;color:#111}
+    h1{font-size:1.2rem;margin:0 0 12px}
+    .controls{display:grid;grid-template-columns:1fr 1fr 220px;gap:10px;align-items:end;margin-bottom:14px}
+    label{font-weight:700;margin-bottom:6px;display:block}
+    select,input,button{width:100%;padding:8px;border-radius:8px;border:1px solid #cfcfcf}
+    button{background:var(--accent);color:#fff;border:none;cursor:pointer}
+    .message{color:#b70f0f;font-weight:700;margin:8px 0}
+    .grid-wrap{max-width:1200px;margin:0 auto}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .card{background:#fff;border:1px solid #e8eaef;border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+    .card h3{margin:0;padding:10px 12px;background:var(--accent);color:#fff;font-size:0.95rem}
+    .card img{display:block;width:100%;height:auto;object-fit:contain;background:#f2f4f7}
+    .footer{max-width:1200px;margin:18px auto;color:#444}
+    @media(max-width:820px){.controls{grid-template-columns:1fr;}.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <h1>Confronto qualitativo immagini</h1>
+
+  <div class="controls">
+    <div>
+      <label for="attackModel">Modello</label>
+      <select id="attackModel">
+        <option value="SD_Inpainting">SD_Inpainting</option>
+        <option value="SD_Img2Img">SD_Img2Img</option>
+        <option value="InstructionPix2Pix">InstructionPix2Pix</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="expFolder">Sottocartella esperimento</label>
+      <select id="expFolder"></select>
+    </div>
+
+    <div>
+      <label for="sampleIdx">Indice sample</label>
+      <input id="sampleIdx" type="number" min="0" value="0" />
+      <button id="btnLoad" style="margin-top:8px">Carica immagini</button>
+    </div>
+  </div>
+
+  <div id="status" class="message"></div>
+
+  <div class="card" style="max-width:1200px;margin:0 auto 14px;padding:10px;">
+    <h3>Prompt usato</h3>
+    <pre id="promptText" style="white-space:pre-wrap;word-break:break-word;margin:0;padding:8px;background:#f2f4f7;border-radius:8px;min-height:44px"></pre>
+  </div>
+  <div class="grid-wrap">
+    <div class="grid">
+      <!-- Row 1: edited original, edited immunized -->
+      <div class="card">
+        <h3>Edited original</h3>
+        <a id="link_edited_original" href="#" target="_blank"><img id="img_edited_original" src="" alt="edited original" /></a>
+      </div>
+
+      <div class="card">
+        <h3>Edited immunized</h3>
+        <a id="link_edited_immunized" href="#" target="_blank"><img id="img_edited_immunized" src="" alt="edited immunized" /></a>
+      </div>
+
+      <!-- Row 2: original, immunized -->
+      <div class="card">
+        <h3>Original image</h3>
+        <a id="link_original" href="#" target="_blank"><img id="img_original" src="" alt="original image" /></a>
+      </div>
+
+      <div class="card">
+        <h3>Immunized image</h3>
+        <a id="link_immunized" href="#" target="_blank"><img id="img_immunized" src="" alt="immunized image" /></a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Servi la cartella del progetto (es. <code>python -m http.server 8000</code>) e apri questa pagina.</div>
+
+  <script>
+    const attackModel = document.getElementById('attackModel');
+    const expFolder = document.getElementById('expFolder');
+    const sampleIdx = document.getElementById('sampleIdx');
+    const btnLoad = document.getElementById('btnLoad');
+    const status = document.getElementById('status');
+
+    const imgEditedOriginal = document.getElementById('img_edited_original');
+    const imgEditedImmunized = document.getElementById('img_edited_immunized');
+    const imgOriginal = document.getElementById('img_original');
+    const imgImmunized = document.getElementById('img_immunized');
+
+    const linkEditedOriginal = document.getElementById('link_edited_original');
+    const linkEditedImmunized = document.getElementById('link_edited_immunized');
+    const linkOriginal = document.getElementById('link_original');
+    const linkImmunized = document.getElementById('link_immunized');
+    const promptText = document.getElementById('promptText');
+
+    function rootPath(){ return `output/${attackModel.value}/full_dataset`; }
+
+    async function listFolders(){
+      expFolder.innerHTML = '';
+      status.textContent = '';
+      try{
+        const res = await fetch(rootPath()+'/');
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html,'text/html');
+        const links = Array.from(doc.querySelectorAll('a')).map(a=>a.getAttribute('href'))
+          .filter(h=>h && h!=='../' && h.endsWith('/')).map(h=>h.replace(/\/$/,''));
+        links.forEach(l=>{ const o=document.createElement('option'); o.value=l; o.textContent=l; expFolder.appendChild(o); });
+        if(links.length===0) status.textContent = 'Nessuna sottocartella trovata.';
+      }catch(e){ status.textContent = 'Impossibile leggere cartella: '+rootPath(); }
+    }
+
+    function buildPaths(idx){
+      const folder = expFolder.value;
+      if(!folder) { status.textContent='Seleziona una sottocartella.'; return null }
+      if(idx === '' || idx == null) { status.textContent='Inserisci indice sample.'; return null }
+      const base = `${rootPath()}/${folder}/img_${idx}`;
+      return {
+        edited_original: `${base}/edited_original.png`,
+        edited_immunized: `${base}/edited_immunized.png`,
+        original: `${base}/original_image.png`,
+        immunized: `${base}/immunized_image.png`,
+        prompt: `${base}/prompt_and_metrics.txt`
+      };
+    }
+
+    function setImgs(paths){
+      status.textContent = 'Caricamento...';
+      let done=0, err=0; const imgs=[imgEditedOriginal,imgEditedImmunized,imgOriginal,imgImmunized];
+      imgs.forEach((el,i)=>{ el.onload = ()=>{ done++; if(done+err===imgs.length) finishLoad(done,err); }; el.onerror = ()=>{ err++; if(done+err===imgs.length) finishLoad(done,err); }; });
+      imgEditedOriginal.src = paths.edited_original; linkEditedOriginal.href = paths.edited_original;
+      imgEditedImmunized.src = paths.edited_immunized; linkEditedImmunized.href = paths.edited_immunized;
+      imgOriginal.src = paths.original; linkOriginal.href = paths.original;
+      imgImmunized.src = paths.immunized; linkImmunized.href = paths.immunized;
+
+      // carica il file prompt_and_metrics e mostra solo la sezione Prompt
+      if(promptText){
+        fetch(paths.prompt).then(async res=>{
+          if(!res.ok) throw new Error('HTTP '+res.status);
+          const txt = await res.text();
+          const match = txt.match(/--- Prompt ---\s*([\s\S]*?)\s*--- Metrics ---/i);
+          promptText.textContent = match ? match[1].trim() : txt.trim();
+        }).catch(()=>{ promptText.textContent = 'Nessun prompt disponibile in questo percorso.'; });
+      }
+    }
+
+    function finishLoad(done,err){
+      if(err===0) status.textContent = `Tutte le immagini caricate (${done}).`;
+      else status.textContent = `Caricate ${done}, ${err} errori. Verifica i file nel percorso.`;
+    }
+
+    btnLoad.addEventListener('click', ()=>{ status.textContent=''; const p = buildPaths(sampleIdx.value); if(p) setImgs(p); });
+    sampleIdx.addEventListener('keyup', e=>{ if(e.key==='Enter') btnLoad.click(); });
+    attackModel.addEventListener('change', listFolders);
+
+    // inizializza
+    listFolders();
+  </script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+# Virtual environment
+venv/
+venv310/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Output e immagini generate
+data/
+wandb/
+output/
+experiment/
+checkpoints/
+logs/
+
+
+# Pesi dei modelli (file pesanti)
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.ckpt
+
+# Cache HuggingFace
+cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Log
+*.log
