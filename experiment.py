@@ -446,7 +446,7 @@ def run_experiments(
 
     print("\n" + "=" * 60)
     print(f"Experiment 1/3 — n_steps sweep (media su {len(samples)} campioni)")
-    experiment_n_steps(*shared)
+    #experiment_n_steps(*shared)
 
     print("\n" + "=" * 60)
     print(f"Experiment 2/3 — eps sweep (media su {len(samples)} campioni)")
@@ -454,7 +454,7 @@ def run_experiments(
 
     print("\n" + "=" * 60)
     print(f"Experiment 3/3 — lambda_noise sweep (media su {len(samples)} campioni)")
-    experiment_lambda_noise(*shared)
+    #experiment_lambda_noise(*shared)
 
     print("\nAll experiments completed.")
     return immunization_model
@@ -553,8 +553,12 @@ if __name__ == "__main__":
     config = get_default_config()
 
     checkpoint_paths = [
-        os.path.join("checkpoints", "unet_best_nv5dqvvb.pth"),
-        os.path.join("checkpoints", "unet_best_uz0247gg.pth")
+        os.path.join("checkpoints", "unet_best_o23oqvbx.pth"),
+        #os.path.join("checkpoints", "unet_best_uz0247gg.pth"),
+        os.path.join("checkpoints", "unet_best_2ji8vjn3.pth"),
+        os.path.join("checkpoints", "unet_best_fk2utznx.pth"),
+        os.path.join("checkpoints", "unet_best_4g2mrzt5.pth"),
+
         # aggiungi qui le altre reti...
     ]
 

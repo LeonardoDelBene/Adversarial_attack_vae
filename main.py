@@ -470,7 +470,7 @@ def get_config():
         "model_attack":         "sd_inpainting", # "sd_pix2pix", "sd_inpainting", o "sd_img2img", "sd_xl_img2img"
         "edit_prompt":          "Change the background in a forest", # usato solo per sd_pix2pix, altrimenti viene preso da ogni sample
 
-        "photo guard":          False,
+        "photo guard":          True,
         "alpha":                2 / 255,
         
         "is_2_stage":           True,
@@ -478,19 +478,19 @@ def get_config():
         "target":               "gray",
         "noise_mode":           "mask",
         "lr":                   1e-4,
-        "eps":                  64/255,
-        "n_steps":              300,
+        "eps":                  8/255,
+        "n_steps":              200,
         "lambda_vae":           1,
         "lambda_noise":         150,
 
         "seed":                 2043,
         "load_existing":        True,
-        "checkpoint_path":      os.path.join("checkpoints", "unet_best_nkrxr2ji.pth"), #  MSE: unet_best_nv5dqvvb.pth DiffVax: diffvax_trained.pth
+        "checkpoint_path":      os.path.join("checkpoints", "unet_best_vk1ydwvz.pth"), #  MSE: unet_best_nv5dqvvb.pth DiffVax: diffvax_trained.pth
         "molt_filter":          2,
 
         "base_output_dir":      "output",
         "dataset_path":         "./data/DiffVaxDataset_local",
-        "run_full_dataset":     True,
+        "run_full_dataset":     False,
         "run_wandb":            "MagicBrush_gray_FT"
     }
 

@@ -113,22 +113,21 @@ def parse_global_summary(text, filename):
 
 def main():
     summary_files = [
-        "./output/InstructionPix2Pix/full_dataset/VAE_MSE/global_summary.txt",
-        "./output/SD_Inpainting/full_dataset/VAE_MSE/global_summary.txt",
-        "./output/SD_Img2Img/full_dataset/VAE_MSE/global_summary.txt",
-
-        "./output/InstructionPix2Pix/full_dataset/VAE_MSE_FT/global_summary.txt",
-        "./output/SD_Inpainting/full_dataset/VAE_MSE_FT/global_summary.txt",
-        "./output/SD_Img2Img/full_dataset/VAE_MSE_FT/global_summary.txt",
-
         "./output/InstructionPix2Pix/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt",
         "./output/SD_Inpainting/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt",
         "./output/SD_Img2Img/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt",
 
-        "./output/InstructionPix2Pix/full_dataset/Stage 2/global_summary.txt",
-        "./output/SD_Inpainting/full_dataset/Stage 2/global_summary.txt",
-        "./output/SD_Img2Img/full_dataset/Stage 2/global_summary.txt",
+        "./output/InstructionPix2Pix/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt",
+        "./output/SD_Inpainting/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt",
+        "./output/SD_Img2Img/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt",
 
+        "./output/InstructionPix2Pix/full_dataset/DiffVax/global_summary.txt",
+        "./output/SD_Inpainting/full_dataset/DiffVax/global_summary.txt",
+        "./output/SD_Img2Img/full_dataset/DiffVax/global_summary.txt",
+
+        "./output/InstructionPix2Pix/full_dataset/PhotoGuard/global_summary.txt",
+        "./output/SD_Inpainting/full_dataset/PhotoGuard/global_summary.txt",
+        "./output/SD_Img2Img/full_dataset/PhotoGuard/global_summary.txt",
 
     ]
 
@@ -176,7 +175,7 @@ def main():
 
     print("Colonne rinominate")
 
-    output_file = 'metriche_globali_stage1_vs_stage2.csv'
+    output_file = 'metriche_globali_2.csv'
     df.to_csv(output_file, index=False)
     print(f"✓ Esportato: {output_file}")
 

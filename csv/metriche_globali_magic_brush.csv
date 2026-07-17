@@ -1,0 +1,7 @@
+name,psnr_quality,ssim_quality,fsim_quality,psnr_protection,ssim_protection,fsim_protection,subject_lpips_orig,global_lpips_orig,subject_lpips_edited,global_lpips_edited,attack_success_score,attack_successes_count,attack_success_rate
+./InstructionPix2Pix/full_dataset/MagicBrush_gray_FT,28.6680,0.7696,0.7218,15.9707,0.5219,0.4461,0.2624,0.2322,0.5374,0.5239,5.2603,177,0.6654
+./SD_Inpainting/full_dataset/MagicBrush_gray_FT,28.6680,0.7696,0.7218,20.6217,0.6721,0.6000,0.2624,0.2322,0.2624,0.3373,6.3004,224,0.8421
+./SD_Img2Img/full_dataset/MagicBrush_gray_FT,28.6680,0.7696,0.7218,16.3165,0.4431,0.4327,0.2624,0.2322,0.6015,0.5941,6.4862,243,0.9135
+./InstructionPix2Pix/full_dataset/MagicBrush_gray_noFT,27.4910,0.7260,0.6762,16.1273,0.5209,0.4454,0.3182,0.2812,0.5403,0.5268,5.3064,184,0.6917
+./SD_Inpainting/full_dataset/MagicBrush_gray_noFT,27.4910,0.7260,0.6762,20.1145,0.6262,0.5565,0.3182,0.2812,0.3182,0.3870,6.6178,246,0.9248
+./SD_Img2Img/full_dataset/MagicBrush_gray_noFT,27.4910,0.7260,0.6762,16.5262,0.4499,0.4353,0.3182,0.2812,0.5936,0.5864,6.4474,241,0.9060

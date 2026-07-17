@@ -6,11 +6,11 @@ import pandas as pd
 
 # Inserisci qui i percorsi ai file sweep_eps.csv che vuoi usare.
 CSV_PATHS = [
-    "./unet_best_4g2mrzt5/sweep_eps.csv", #8
-    "./unet_best_fk2utznx/sweep_eps.csv", #16
-    "./unet_best_2ji8vjn3/sweep_eps.csv", #32
-    "./unet_best_uz0247gg/sweep_eps.csv", #64
-    "./unet_best_o23oqvbx/sweep_eps.csv", #128
+    "./eps_8/sweep_eps.csv", #8
+    "./eps_16/sweep_eps.csv", #16
+    "./eps_32/sweep_eps.csv", #32
+    "./vae_mse/sweep_eps.csv", #64
+    "./eps_128/sweep_eps.csv", #128
 ]
 
 # Inserisci qui i nomi delle righe che vuoi usare nel CSV / heatmap.
@@ -34,13 +34,13 @@ EPS_LABELS = [
 ]
 
 # Scegli il valore da usare: "l_vae" o "subject_lpips".
-METRIC_NAME = "editing_score_attacksd"
+METRIC_NAME = "subject_lpips"
 
 # Imposta a True se per questa metrica un valore più basso è migliore
 # (es. LPIPS, l_vae), a False se un valore più alto è migliore
 # (es. PSNR, SSIM, editing_score). Controlla sia la colormap che il
 # testo del titolo/colorbar della heatmap.
-LOWER_IS_BETTER = False
+LOWER_IS_BETTER = True
 
 OUTPUT_FILE = os.path.join(os.path.dirname(__file__), f"heatmap_{METRIC_NAME}.csv")
 HEATMAP_IMAGE = os.path.join(os.path.dirname(__file__), f"heatmap_{METRIC_NAME}.png")
@@ -103,7 +103,7 @@ def plot_heatmap(df: pd.DataFrame, output_path: str, lower_is_better: bool) -> N
     for i in range(len(df.index)):
         for j in range(len(df.columns)):
             value = df.iat[i, j]
-            ax.text(j, i, f"{value:.2f}", ha="center", va="center", color="white", fontsize=8)
+            ax.text(j, i, f"{value:.2f}", ha="center", va="center", color="black", fontsize=8)
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=150)
