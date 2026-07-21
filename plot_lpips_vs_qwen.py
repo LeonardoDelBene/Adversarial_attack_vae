@@ -1,28 +1,25 @@
 """
-Script per creare due grafici che metteno in relazione LPIPS del subject
-con due metriche di Qwen:
-    1) lo score medio di attack success (1-7)
+Script per creare due grafici a barre che mettono in relazione, per ogni
+METODO (VAE_MSE, VAE_MSE_FT, VAE_MSE_FT_2_STAGE, DiffVax, ...), le tre
+PIPELINE (SD_Inpainting, SD_Img2Img, InstructionPix2Pix) rispetto a:
+    1) lo score medio di attack success (1-7) di Qwen
     2) l'attack success rate (frazione di campioni con score >= soglia)
 
-Entrambi i grafici mostrano un piano cartesiano con pallini colorati per
-configurazione. Ogni METODO (VAE_MSE, VAE_MSE_FT, VAE_MSE_FT_2_STAGE,
-DiffVax, ...) ha un colore di base proprio (es. rosso, blu, verde...).
-All'interno dello stesso metodo, le tre PIPELINE (SD_Inpainting,
-SD_Img2Img, InstructionPix2Pix) sono rappresentate con sfumature
-diverse dello stesso colore base:
-    - SD_Inpainting       -> sfumatura CHIARA
-    - SD_Img2Img          -> sfumatura INTERMEDIA
-    - InstructionPix2Pix  -> sfumatura SCURA
+Per ogni metodo (configurazione) vengono disegnate 4 barre affiancate:
+    - 3 barre, una per pipeline, con sfumature diverse dello stesso
+      colore base del metodo (SD_Inpainting = chiaro, SD_Img2Img =
+      intermedio, InstructionPix2Pix = scuro)
+    - 1 barra aggiuntiva "Media", con il colore pieno (non sfumato) del
+      metodo e un hatch per distinguerla a colpo d'occhio dalle altre tre
 
-In questo modo, ad esempio, tutti i pallini "VAE_MSE" sono nella stessa
-famiglia di rosso, ma puoi distinguere a colpo d'occhio se un punto è
-Inpainting (rosso chiaro), Img2Img (rosso medio) o InstructionPix2Pix
-(rosso scuro).
+L'asse x mostra il Subject LPIPS (Original vs Immunized) di ciascun
+metodo, e i gruppi di barre sono ordinati in base a questo valore.
 """
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from matplotlib.patches import Patch
 import colorsys
 import numpy as np
 from pathlib import Path
@@ -48,6 +45,9 @@ DATA_FILES = [
     'output/SD_Inpainting/full_dataset/VAE_MSE/global_summary.txt',
     'output/SD_Img2Img/full_dataset/VAE_MSE/global_summary.txt',
     'output/InstructionPix2Pix/full_dataset/VAE_MSE/global_summary.txt',
+      'output/SD_Inpainting/full_dataset/PhotoGuard/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/PhotoGuard/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/PhotoGuard/global_summary.txt',
 ]
 
 
@@ -82,6 +82,10 @@ PIPELINE_LIGHTNESS = {
 
 # Ordine di disegno/legenda delle pipeline (facoltativo, solo estetico)
 PIPELINE_ORDER = ['SD_Inpainting', 'SD_Img2Img', 'InstructionPix2Pix']
+
+# Colore neutro usato solo per costruire la legenda "Task / Aggregato"
+# (le sfumature reali nel grafico restano quelle del metodo)
+LEGEND_NEUTRAL_COLOR = '#808080'
 
 
 def shade_color(hex_color: str, lightness: float) -> str:
@@ -296,28 +300,40 @@ def create_plot(
     output_path: str = "lpips_vs_qwen.png",
 ):
     """
-    Crea un grafico che mostra la relazione tra LPIPS e una metrica di
-    Qwen a scelta (score medio oppure attack success rate).
+    Crea un bar plot raggruppato per METODO (configurazione), con
+    l'asse x etichettato dal Subject LPIPS di ciascun metodo.
 
-    X-axis: Subject LPIPS (dagli originali immunizzati)
+    Per ogni metodo vengono disegnate 4 barre affiancate:
+        - 3 barre, una per PIPELINE (Inpainting / Img2Img /
+          InstructionPix2Pix), colorate con la sfumatura chiara/media/
+          scura del colore base del metodo
+        - 1 barra "Media", con il colore pieno (non sfumato) del
+          metodo e un hatch, che rappresenta la media delle 3 barre
+          precedenti
+
     Y-axis: colonna indicata da y_column (es. 'qwen_score' oppure
             'attack_success_rate')
-    Colori: un colore di base per ogni METODO; sfumatura (chiaro /
-            medio / scuro) in base alla PIPELINE (Inpainting / Img2Img
-            / InstructionPix2Pix).
+    X-axis: Subject LPIPS (Original vs Immunized) del metodo; i gruppi
+            sono ordinati in ordine crescente di questo valore.
     """
 
-    # Rimuovi righe con valori mancanti
-    df_clean = df.dropna(subset=['lpips_subject', y_column])
+    # Rimuovi righe con valori mancanti sulla metrica di interesse o su LPIPS
+    df_clean = df.dropna(subset=[y_column, 'lpips_subject'])
 
     if len(df_clean) == 0:
         raise ValueError("Nessun dato valido per il grafico!")
 
-    # Crea la figura
-    fig, ax = plt.subplots(figsize=(12, 8))
+    # Subject LPIPS medio per metodo (in teoria è costante tra le pipeline
+    # dello stesso metodo, dato che dipende solo dall'immagine immunizzata;
+    # la media serve solo come protezione in caso di piccole discrepanze)
+    lpips_by_method = df_clean.groupby('method')['lpips_subject'].mean()
 
-    # Metodi in ordine di apparizione (determina il colore base)
-    methods = list(dict.fromkeys(df_clean['method']))
+    # Metodi ordinati per Subject LPIPS crescente (determina anche il
+    # colore base e la posizione dei gruppi di barre sull'asse x)
+    methods = sorted(
+        list(dict.fromkeys(df_clean['method'])),
+        key=lambda m: lpips_by_method[m]
+    )
     color_map = build_color_map(methods)
 
     # Pipeline presenti nei dati, ordinate secondo PIPELINE_ORDER quando possibile
@@ -325,38 +341,84 @@ def create_plot(
     pipelines_sorted = [p for p in PIPELINE_ORDER if p in pipelines_present] + \
                         [p for p in pipelines_present if p not in PIPELINE_ORDER]
 
-    # Disegna un gruppo di punti per ogni combinazione (metodo, pipeline)
-    for method in methods:
-        base_color = color_map[method]
-        for pipeline in pipelines_sorted:
-            subset = df_clean[(df_clean['method'] == method) & (df_clean['pipeline'] == pipeline)]
-            if subset.empty:
-                continue
+    # Le barre disegnate per ogni metodo: le pipeline + la barra "Media"
+    bar_names = pipelines_sorted + ['Media']
+    n_bars = len(bar_names)
+    n_groups = len(methods)
 
-            lightness = PIPELINE_LIGHTNESS.get(pipeline, 0.5)
-            point_color = shade_color(base_color, lightness)
+    x = np.arange(n_groups)
+    group_width = 0.8
+    bar_width = group_width / n_bars
 
-            ax.scatter(
-                subset['lpips_subject'],
-                subset[y_column],
-                c=point_color,
-                label=f"{method} - {pipeline}",
-                s=150,
-                alpha=0.85,
-                edgecolors='black',
-                linewidth=0.8
-            )
+    fig, ax = plt.subplots(figsize=(max(12, n_groups * 2.2), 8))
 
-    # Configura il grafico
+    for j, bar_name in enumerate(bar_names):
+        offset = (j - (n_bars - 1) / 2) * bar_width
+
+        values = []
+        colors = []
+        for method in methods:
+            base_color = color_map[method]
+
+            if bar_name == 'Media':
+                subset = df_clean[df_clean['method'] == method]
+                value = subset[y_column].mean() if not subset.empty else np.nan
+                color = base_color  # colore pieno, non sfumato
+            else:
+                subset = df_clean[(df_clean['method'] == method) & (df_clean['pipeline'] == bar_name)]
+                value = subset[y_column].mean() if not subset.empty else np.nan
+                lightness = PIPELINE_LIGHTNESS.get(bar_name, 0.5)
+                color = shade_color(base_color, lightness)
+
+            values.append(value)
+            colors.append(color)
+
+        hatch = '////' if bar_name == 'Media' else None
+
+        ax.bar(
+            x + offset,
+            values,
+            bar_width * 0.9,
+            color=colors,
+            edgecolor='black',
+            linewidth=0.8,
+            hatch=hatch,
+        )
+
+    # Etichette dell'asse x: valore di Subject LPIPS per ciascun metodo
+    xtick_labels = [f"{lpips_by_method[m]:.3f}" for m in methods]
+    ax.set_xticks(x)
+    ax.set_xticklabels(xtick_labels, rotation=20, ha='right', fontsize=10)
     ax.set_xlabel('Subject LPIPS (Immunized)', fontsize=12, fontweight='bold')
     ax.set_ylabel(y_label, fontsize=12, fontweight='bold')
     ax.set_title(title, fontsize=14, fontweight='bold')
-    ax.grid(True, alpha=0.3, linestyle='--')
+    ax.grid(True, axis='y', alpha=0.3, linestyle='--')
 
-    # Legenda: un colore per ogni metodo (colore base) + indicazione della sfumatura per pipeline
-    handles, labels = ax.get_legend_handles_labels()
-    if len(labels) > 1:
-        ax.legend(handles, labels, bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
+    # Legenda in due parti: colore = metodo (utile per sapere a quale
+    # metodo corrisponde ciascun valore di LPIPS sull'asse x), sfumatura/
+    # hatch = pipeline/media
+    method_handles = [
+        Patch(facecolor=color_map[m], edgecolor='black', label=m) for m in methods
+    ]
+
+    pipeline_handles = []
+    for pipeline in pipelines_sorted:
+        lightness = PIPELINE_LIGHTNESS.get(pipeline, 0.5)
+        c = shade_color(LEGEND_NEUTRAL_COLOR, lightness)
+        pipeline_handles.append(Patch(facecolor=c, edgecolor='black', label=pipeline))
+    pipeline_handles.append(
+        Patch(facecolor=LEGEND_NEUTRAL_COLOR, edgecolor='black', hatch='////', label='Media')
+    )
+
+    legend1 = ax.legend(
+        handles=method_handles, title='Metodo',
+        bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9
+    )
+    ax.add_artist(legend1)
+    ax.legend(
+        handles=pipeline_handles, title='Task / Aggregato',
+        bbox_to_anchor=(1.05, 0.55), loc='upper left', fontsize=9
+    )
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
@@ -416,29 +478,29 @@ def main():
     # Stampa statistiche
     print_statistics(df)
 
-    # --- Grafico 1: LPIPS vs Qwen Average Score ---
-    print("Creazione grafico 1/2: LPIPS vs Qwen Score medio...")
+    # --- Grafico 1: Qwen Average Score vs Subject LPIPS ---
+    print("Creazione grafico 1/2: Subject LPIPS vs Qwen Score medio...")
     try:
         create_plot(
             df,
             y_column='qwen_score',
             y_label='Qwen Attack Success Score (1-7)',
-            title='Relazione tra LPIPS del Subject e Qwen Score',
+            title='Relazione tra Subject LPIPS e Qwen Score',
             output_path="lpips_vs_qwen_score.png",
         )
     except Exception as e:
         print(f"❌ Errore nella creazione del grafico 1: {e}")
         sys.exit(1)
 
-    # --- Grafico 2: LPIPS vs Attack Success Rate ---
+    # --- Grafico 2: Attack Success Rate vs Subject LPIPS ---
     if 'attack_success_rate' in df.columns and df['attack_success_rate'].notna().any():
-        print("\nCreazione grafico 2/2: LPIPS vs Attack Success Rate...")
+        print("\nCreazione grafico 2/2: Subject LPIPS vs Attack Success Rate...")
         try:
             create_plot(
                 df,
                 y_column='attack_success_rate',
                 y_label='Attack Success Rate',
-                title='Relazione tra LPIPS del Subject e Attack Success Rate',
+                title='Relazione tra Subject LPIPS e Attack Success Rate',
                 output_path="lpips_vs_attack_success_rate.png",
             )
         except Exception as e:

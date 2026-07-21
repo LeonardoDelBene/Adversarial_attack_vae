@@ -14,7 +14,7 @@ from utils import (
     recover_image,
     set_seed_lib,
 )
-from data import COCOLocal, OxfordPetLocal, MagicBrushHF
+from data import COCOLocal, OxfordPetLocal, MagicBrushHF, TEdBenchDataset
 from model import Attack, AttackSD, AttackInstructPix2Pix, Immunization, AttackSDXL, PhotoGuard
 from metrics import create_metric, MetricType
 
@@ -120,6 +120,12 @@ def load_sample(config):
         else:
             edit_prompt = config["edit_prompt"]
         print(f"Using MagicBrush dataset, sample {config['sample_idx']}")
+    elif ds_type == "TEdBench":
+        dataset = TEdBenchDataset()
+        sample_idx = config["sample_idx"]
+        image, image_mask = dataset[sample_idx]
+        edit_prompt = dataset.dataset[sample_idx]["caption"]
+        print(f"Using TEdBench dataset, sample {sample_idx}")
     else:
         raise ValueError(f"Unsupported dataset_type: {ds_type}")
 
@@ -349,7 +355,8 @@ def run_on_full_dataset(config):
             load_existing=config["load_existing"],
             load_path=config["checkpoint_path"],
             vae=attack_model_inpaint.model.vae,
-            molt_filter=config["molt_filter"]
+            molt_filter=config["molt_filter"],
+            tg=config['target']
         )
     print("Done.")
 
@@ -364,6 +371,8 @@ def run_on_full_dataset(config):
         dataset = OxfordPetLocal(root="./data/Oxford-Pet", split=config["dataset_split"])
     elif ds_type == "MagicBrush":
         dataset = MagicBrushHF(split=config["dataset_split"])
+    elif ds_type == "TEdBench":
+        dataset = TEdBenchDataset()
     else:
         raise ValueError(f"Unsupported dataset_type: {ds_type}")
 
@@ -427,6 +436,8 @@ def run_on_full_dataset(config):
 
                     if ds_type == "MagicBrush":
                         edit_prompt = dataset.dataset[sample_idx]["instruction"]
+                    elif ds_type == "TEdBench":
+                        edit_prompt = dataset.dataset[sample_idx]["caption"]
                     elif model_name == "sd_inpainting" and ds_type == "DiffVax":
                         raw_sample = dataset[sample_idx]
                         edit_prompt = raw_sample.get("prompts", [config["edit_prompt"]] * 2)[1]
@@ -464,34 +475,34 @@ def run_on_full_dataset(config):
 
 def get_config():
     return {
-        "dataset_type":         "MagicBrush",  # DiffVax | COCO | Oxford-Pet | MagicBrush
+        "dataset_type":         "MagicBrush",  # DiffVax | COCO | Oxford-Pet | MagicBrush | TEdBench
         "dataset_split":        "validation",
-        "sample_idx":           0,
+        "sample_idx":           10,
         "model_attack":         "sd_inpainting", # "sd_pix2pix", "sd_inpainting", o "sd_img2img", "sd_xl_img2img"
-        "edit_prompt":          "Change the background in a forest", # usato solo per sd_pix2pix, altrimenti viene preso da ogni sample
+        "edit_prompt":          "Change the background in a forest", 
 
-        "photo guard":          True,
+        "photo guard":          False,
         "alpha":                2 / 255,
         
         "is_2_stage":           True,
         "targeted":             True,
-        "target":               "gray",
-        "noise_mode":           "mask",
+        "target":               "opt_magicbrush",
+        "noise_mode":           "all",
         "lr":                   1e-4,
-        "eps":                  8/255,
-        "n_steps":              200,
+        "eps":                  64/255,
+        "n_steps":              300,
         "lambda_vae":           1,
         "lambda_noise":         150,
 
         "seed":                 2043,
         "load_existing":        True,
-        "checkpoint_path":      os.path.join("checkpoints", "unet_best_vk1ydwvz.pth"), #  MSE: unet_best_nv5dqvvb.pth DiffVax: diffvax_trained.pth
+        "checkpoint_path":      os.path.join("checkpoints", "unet_best_nkrxr2ji.pth"), #  diffVax_trained: unet_best_nv5dqvvb.pth DiffVax: diffvax_trained.pth magicbrush: unet_best_nkrxr2ji.pth
         "molt_filter":          2,
 
         "base_output_dir":      "output",
         "dataset_path":         "./data/DiffVaxDataset_local",
         "run_full_dataset":     False,
-        "run_wandb":            "MagicBrush_gray_FT"
+        "run_wandb":            "TEdbench_diff"
     }
 
 def main():

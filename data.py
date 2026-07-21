@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import torch
 from torchvision.transforms import InterpolationMode
 from torch.utils.data import Dataset
@@ -95,10 +96,58 @@ class OxfordPetLocal(Dataset):
 
         return image, mask
 
+
+class TEdBenchDataset(Dataset):
+    """
+    Carica TEdBench da HuggingFace Hub (bahjat-kawar/tedbench).
+
+    Split disponibile: "val" (100 esempi). Il dataset HF contiene solo
+    "original_image", "caption" ed "edited_image": non fornisce maschere.
+    Le maschere vengono quindi caricate da cartella locale, abbinate
+    all'esempio per indice posizionale (non per nome/stem):
+
+        data/tedbench_mask/mask_fine/000.png
+        data/tedbench_mask/mask_fine/001.png
+        ...
+
+    cioè l'esempio idx=0 dello split "val" usa la maschera "000.png",
+    l'esempio idx=1 usa "001.png", e così via.
+    """
+
+    MASK_DIR = "./data/tedbench_masks/mask_fine"
+
+    def __init__(self, split: str = "val", cache_dir: str = "/equilibrium/ldelbene/cache/hf", target_size=(512,512)):
+        assert split == "val", f"TEdBench ha solo lo split 'val', ricevuto: {split}"
+
+        self.dataset = load_dataset("bahjat-kawar/tedbench", split="val", cache_dir=cache_dir)
+        self.mask_dir = Path(self.MASK_DIR)
+        self.target_size = target_size
+
+        print(f"[TEdBenchDataset] split={split} | esempi: {len(self.dataset)}")
+
+        assert len(self.dataset) > 0, "Nessun esempio trovato per TEdBench"
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx: int):
+        sample = self.dataset[idx]
+        image = sample["original_image"].convert("RGB")
+
+        mask_path = self.mask_dir / f"{idx:03d}.png"
+        assert mask_path.exists(), f"Maschera non trovata: {mask_path}"
+        mask = Image.open(mask_path).convert("L")
+        mask = ImageOps.invert(mask)
+        image = image.resize(self.target_size, Image.BICUBIC)
+        mask  = mask.resize(self.target_size, Image.NEAREST)
+
+        return image, mask
+
+
 class ImmunizationDataset(Dataset):
     def __init__(
         self,
-        dataset:        str = "DiffVax",  # DiffVax | Oxford-Pet
+        dataset:        str = "DiffVax",  # DiffVax | Oxford-Pet | COCO | MagicBrush | TEdBench
         split:          str = "train",
         image_size:     int = 224,
     ):
@@ -114,6 +163,8 @@ class ImmunizationDataset(Dataset):
             self.dataset = COCOLocal(split=split)
         elif dataset == "MagicBrush":
             self.dataset = MagicBrushHF(split=split)
+        elif dataset == "TEdBench":
+            self.dataset = TEdBenchDataset(split=split)
         else:
             raise ValueError(f"dataset non supportato: {dataset}")
 
@@ -137,6 +188,8 @@ class ImmunizationDataset(Dataset):
      elif isinstance(self.dataset, COCOLocal):        
         image, mask = self.dataset[idx]
      elif isinstance(self.dataset, MagicBrushHF):
+        image, mask = self.dataset[idx]
+     elif isinstance(self.dataset, TEdBenchDataset):
         image, mask = self.dataset[idx]
      else:
         sample = self.dataset[idx]
@@ -209,72 +262,3 @@ class MagicBrushHF(Dataset):
 
         mask = ImageOps.invert(mask)
         return image, mask
-
-
-
-
-
-
-
-
-
-"""
-Script di verifica rapida per MagicBrushHF.
-
-Passa da MagicBrushHF.__getitem__ (nessun resize/trasformazione applicata),
-mostra image e mask così come le rende il dataset.
-"""
-
-import numpy as np
-from PIL import Image
-import matplotlib.pyplot as plt
-
-
-# ---------------------------
-# PARAMETRI (modifica qui)
-# ---------------------------
-SPLIT             = "validation"   # "train" | "val" | "dev"
-IDX               = 156
-SINGLE_TURN_ONLY  = True
-OUT_PATH          = "diffvax_check.png"
-CACHE_DIR         = "/equilibrium/ldelbene/cache/hf"
-
-
-def main():
-    print(f"[INFO] Carico MagicBrushHF(split='{SPLIT}', single_turn_only={SINGLE_TURN_ONLY}) ...")
-    #dataset = MagicBrushHF(split=SPLIT, single_turn_only=SINGLE_TURN_ONLY, cache_dir=CACHE_DIR)
-    dataset = ImmunizationDataset("DiffVax", split=SPLIT, image_size=512)
-
-    print(f"[INFO] Numero totale di esempi: {len(dataset)}")
-    assert 0 <= IDX < len(dataset), f"IDX={IDX} fuori range (0..{len(dataset)-1})"
-
-    image, mask = dataset[IDX]
-
-    print(f"[INFO] Esempio idx={IDX}")
-    print(f"       image: size={image.size}  mode={image.mode}")
-    print(f"       mask:  size={mask.size}  mode={mask.mode}")
-
-    mask_arr = np.array(mask)
-    white_frac = (mask_arr > 127).mean()
-    print(f"       frazione pixel 'bianchi' (>127) nella maschera: {white_frac:.4f}")
-
-    # ---------------------------
-    # PLOT: immagine | maschera
-    # ---------------------------
-    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-
-    axes[0].imshow(image)
-    axes[0].set_title(f"image {image.size}")
-    axes[0].axis("off")
-
-    axes[1].imshow(mask, cmap="gray")
-    axes[1].set_title(f"mask {mask.size}")
-    axes[1].axis("off")
-
-    plt.tight_layout()
-    plt.savefig(OUT_PATH, dpi=150, bbox_inches="tight")
-    print(f"[INFO] Salvato: {OUT_PATH}")
-
-
-if __name__ == "__main__":
-    main()

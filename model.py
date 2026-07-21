@@ -171,7 +171,6 @@ class Immunization:
         for param in vae.parameters():
             param.requires_grad = False
         self.vae              = vae
-        self.lpips_fn         = lpips.LPIPS(net="alex").to(device).eval()
         self.nb_filters       = [x * molt_filter for x in [32, 64, 128, 256, 512]]
         with torch.no_grad():
             if tg == "gray":
@@ -182,6 +181,10 @@ class Immunization:
                 target = Image.open("./data/white.png").convert("RGB").resize((512, 512))
             elif tg == "mean":
                 target = Image.open("./data/diffvax_mean_posterior.png").convert("RGB").resize((512, 512))
+            elif tg == "opt_diffvax":
+                target = Image.open("./data/target_opt.png").convert("RGB").resize((512,512))
+            elif tg == "opt_magicbrush":
+                target = Image.open("./data/target_opt_magicbrush.png").convert("RGB").resize((512,512))
             else:
                 target = 0
 

@@ -561,7 +561,7 @@ def decode_target_to_image(mu_target_path: str, checkpoint_path: str, molt_filte
 
 def get_default_config() -> Dict[str, Any]:
     return {
-        "dataset_type": "DiffVax",
+        "dataset_type": "MagicBrush",
         "dataset_split": "train",
         "image_size": 512,
         "n_samples": 100,  # None -> usa tutto il dataset; o un int per limitare
@@ -576,7 +576,7 @@ def get_default_config() -> Dict[str, Any]:
         "n_epochs": 100,
         "init_mode": "gray",  # "gray" | "noise" | "zeros"
         "load_existing": True,
-        "checkpoint_path": os.path.join("checkpoints", "unet_best_nv5dqvvb.pth"),
+        "checkpoint_path": os.path.join("checkpoints", "unet_best_nkrxr2ji.pth"),
         "molt_filter": 2,
         "seed": 2043,
         "save_every": 1,
@@ -585,7 +585,7 @@ def get_default_config() -> Dict[str, Any]:
         # per sample (consigliato per VRAM limitata). Aumenta solo se hai
         # VRAM di scorta e vuoi un comportamento piu' vicino all'originale.
         "grad_accum_steps": 2,
-        "output_dir": os.path.join("experiment", "target_search"),
+        "output_dir": os.path.join("experiment", "target_search_magicbrush"),
         # Resume: True per riprendere automaticamente dall'ultimo
         # "checkpoint_epoch_*.pt" trovato in output_dir. Puoi anche puntare
         # esplicitamente a un checkpoint con "resume_from": "<path>".
@@ -598,7 +598,5 @@ if __name__ == "__main__":
     config = get_default_config()
     if config["n_samples"] is None:
         config.pop("n_samples")  # optimize_universal_target usera' len(dataset)
-    optimize_universal_target(config)
-
-
-    #PID:3991106
+    #optimize_universal_target(config)
+    decode_target_to_image("experiment/target_search_magicbrush/mu_target_final.pt", config['checkpoint_path'], 2, "experiment/target_search_magicbrush/target_opt.png")
