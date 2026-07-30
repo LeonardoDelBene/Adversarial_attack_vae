@@ -1,0 +1,4 @@
+name,psnr_quality,ssim_quality,fsim_quality,psnr_protection,ssim_protection,fsim_protection,subject_lpips_orig,global_lpips_orig,subject_lpips_edited,global_lpips_edited,attack_success_score,attack_successes_count,attack_success_rate
+./InstructionPix2Pix/full_dataset/TEdbench_diff,37.4074,0.9655,0.9299,21.0595,0.7682,0.6389,0.5365,0.0415,0.8139,0.1902,3.2592,38,0.3800
+./SD_Inpainting/full_dataset/TEdbench_diff,37.4074,0.9655,0.9299,14.6909,0.4917,0.4185,0.5365,0.0415,0.5365,0.5750,5.7575,85,0.8500
+./SD_Img2Img/full_dataset/TEdbench_diff,37.4074,0.9655,0.9299,25.5878,0.8076,0.7004,0.5365,0.0415,0.5367,0.2024,3.3950,44,0.4400

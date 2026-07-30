@@ -146,17 +146,30 @@ def immunize(image, image_mask, immunization_mdl, config):
 
     set_seed_lib(config["seed"])
     if config['photo guard'] == False:
-        immunized_img, l_vae, l_noise = immunization_mdl.immunize_img_targeted(
-            masked_image_torch, mask_torch,
-            noise_mode=config["noise_mode"],
-            is_2_stage=config["is_2_stage"],
-            lr=config["lr"],
-            n_steps=config["n_steps"],
-            eps=config["eps"],
-            lambda_vae=config["lambda_vae"],
-            lambda_noise=config["lambda_noise"],
-            targeted=config["targeted"],
-        )
+        if config['noise_mode']=="mask":
+            immunized_img, l_vae, l_noise = immunization_mdl.immunize_img_targeted(
+                        masked_image_torch, mask_torch,
+                        noise_mode=config["noise_mode"],
+                        is_2_stage=config["is_2_stage"],
+                        lr=config["lr"],
+                        n_steps=config["n_steps"],
+                        eps=config["eps"],
+                        lambda_vae=config["lambda_vae"],
+                        lambda_noise=config["lambda_noise"],
+                        targeted=config["targeted"],
+                    )
+        else:
+            immunized_img, l_vae, l_noise = immunization_mdl.immunize_img_targeted(
+                        image_torch, mask_torch,
+                        noise_mode=config["noise_mode"],
+                        is_2_stage=config["is_2_stage"],
+                        lr=config["lr"],
+                        n_steps=config["n_steps"],
+                        eps=config["eps"],
+                        lambda_vae=config["lambda_vae"],
+                        lambda_noise=config["lambda_noise"],
+                        targeted=config["targeted"],
+                    )
     else:
         immunized_img = immunization_mdl.encoder_attack(
             image_torch, eps=config["eps"], n_steps=config["n_steps"], step_size=config['alpha']
@@ -164,7 +177,7 @@ def immunize(image, image_mask, immunization_mdl, config):
 
     adv_X = (immunized_img / 2 + 0.5).clamp(0, 1)
     adv_image_png = to_pil(adv_X[0]).convert("RGB")
-    if config['photo guard'] == False:
+    if config['photo guard'] == False and config['noise_mode']=="mask":
         adv_image_png = recover_image(adv_image_png, image, image_mask, background=True)
 
     return adv_image_png
@@ -475,19 +488,19 @@ def run_on_full_dataset(config):
 
 def get_config():
     return {
-        "dataset_type":         "MagicBrush",  # DiffVax | COCO | Oxford-Pet | MagicBrush | TEdBench
+        "dataset_type":         "TEdBench",  # DiffVax | COCO | Oxford-Pet | MagicBrush | TEdBench
         "dataset_split":        "validation",
-        "sample_idx":           10,
+        "sample_idx":           2,
         "model_attack":         "sd_inpainting", # "sd_pix2pix", "sd_inpainting", o "sd_img2img", "sd_xl_img2img"
-        "edit_prompt":          "Change the background in a forest", 
+        "edit_prompt":          "A circus horse", 
 
         "photo guard":          False,
         "alpha":                2 / 255,
         
         "is_2_stage":           True,
         "targeted":             True,
-        "target":               "opt_magicbrush",
-        "noise_mode":           "all",
+        "target":               "gray", # gray | white |black | mean | opt_diffvax | opt_magicbrush
+        "noise_mode":           "mask", # mask | all
         "lr":                   1e-4,
         "eps":                  64/255,
         "n_steps":              300,
@@ -496,13 +509,13 @@ def get_config():
 
         "seed":                 2043,
         "load_existing":        True,
-        "checkpoint_path":      os.path.join("checkpoints", "unet_best_nkrxr2ji.pth"), #  diffVax_trained: unet_best_nv5dqvvb.pth DiffVax: diffvax_trained.pth magicbrush: unet_best_nkrxr2ji.pth
+        "checkpoint_path":      os.path.join("checkpoints", "unet_best_nv5dqvvb.pth"), #  diffVax_trained: unet_best_nv5dqvvb.pth DiffVax: diffvax_trained.pth magicbrush: unet_best_nkrxr2ji.pth
         "molt_filter":          2,
 
         "base_output_dir":      "output",
         "dataset_path":         "./data/DiffVaxDataset_local",
-        "run_full_dataset":     False,
-        "run_wandb":            "TEdbench_diff"
+        "run_full_dataset":     True,
+        "run_wandb":            "TedBench_diff_noise_mask_invert"
     }
 
 def main():

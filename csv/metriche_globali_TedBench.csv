@@ -1,0 +1,7 @@
+name,psnr_quality,ssim_quality,fsim_quality,psnr_protection,ssim_protection,fsim_protection,subject_lpips_orig,global_lpips_orig,subject_lpips_edited,global_lpips_edited,attack_success_score,attack_successes_count,attack_success_rate
+./InstructionPix2Pix/full_dataset/TEdbench_diff,37.4074,0.9655,0.9299,21.0595,0.7682,0.6389,0.5365,0.0415,0.8139,0.1902,3.2592,38,0.3800
+./SD_Inpainting/full_dataset/TEdbench_diff,37.4074,0.9655,0.9299,14.6909,0.4917,0.4185,0.5365,0.0415,0.5365,0.5750,5.7575,85,0.8500
+./SD_Img2Img/full_dataset/TEdbench_diff,37.4074,0.9655,0.9299,25.5878,0.8076,0.7004,0.5365,0.0415,0.5367,0.2024,3.3950,44,0.4400
+./InstructionPix2Pix/full_dataset/TedBench_diff_noise_all,29.2202,0.7881,0.6844,16.1335,0.5240,0.4500,0.2136,0.2509,0.9014,0.4840,4.5108,49,0.4900
+./SD_Inpainting/full_dataset/TedBench_diff_noise_all,29.2202,0.7881,0.6844,16.2601,0.5758,0.4691,0.2136,0.2509,0.2136,0.4597,4.4483,51,0.5100
+./SD_Img2Img/full_dataset/TedBench_diff_noise_all,29.2202,0.7881,0.6844,15.9629,0.4455,0.4380,0.2136,0.2509,0.9063,0.6192,6.7442,98,0.9800

@@ -52,11 +52,11 @@ from metrics.editing_score import EditingScore  # adatta il path di import se ne
 
 # Una o più cartelle saved_images da editare
 FOLDERS = [
-   "experiment/eps_8/saved_images", #8
-    "experiment/eps_16/saved_images", #16
-    "experiment/eps_32/saved_images", #32
-    "experiment/vae_mse/saved_images", #64
-    "experiment/eps_128/saved_images", #128
+   #"experiment/eps_8/saved_images", #8
+    #"experiment/eps_16/saved_images", #16
+    #"experiment/eps_32/saved_images", #32
+    "experiment/vae_mse_ft/saved_images/n_steps", #64
+    #"experiment/eps_128/saved_images", #128
 ]
 
 # Prompt per ciascun modello di editing
@@ -70,6 +70,7 @@ MODEL_TAGS = ("Attack", "InstructPix2Pix", "AttackSD")
 
 # matcha "eps_0.12549" o "eps0.12549" dentro al nome file
 EPS_RE = re.compile(r"eps_?([0-9]*\.?[0-9]+)")
+N_STEPS_RE = re.compile(r"n_steps_?(\d+)")
 
 # matcha "original_40.png" -> gruppo 1 = "40"
 ORIGINAL_RE = re.compile(r"^original_(\d+)\.", re.IGNORECASE)
@@ -120,6 +121,17 @@ def extract_eps_from_name(fname):
     return float(match.group(1))
 
 
+def extract_n_steps_from_name(fname):
+    """Estrae n_steps (int) dal nome file, es. immunized_sample40_n_steps_400_...png"""
+    match = N_STEPS_RE.search(os.path.basename(fname))
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except Exception:
+        return None
+
+
 def get_mask_for_sample(dataset, sample_idx):
     """Maschera specifica per il sample_idx, dallo stesso indice del dataset."""
     _, mask_tensor = dataset[sample_idx]
@@ -139,19 +151,23 @@ def run_edit(mod_name, mod, prompt, img, mask):
     return out
 
 
-def update_csv_score(csv_path, eps_value, column_name, score, tol=1e-3):
-    """Scrive `score` nella colonna `column_name` della riga con eps più vicino a eps_value."""
+def update_csv_score(csv_path, axis_value, column_name, score, axis_col='eps', tol=1e-3):
+    """Scrive `score` nella colonna `column_name` della riga con asse (eps o n_steps) più vicino a axis_value."""
     df = pd.read_csv(csv_path)
 
     if column_name not in df.columns:
         df[column_name] = pd.NA
 
-    diffs = (df['eps'] - eps_value).abs()
+    if axis_col not in df.columns:
+        print(f"[WARN] Axis column '{axis_col}' non trovata in {csv_path}, salto.")
+        return
+
+    diffs = (df[axis_col] - axis_value).abs()
     closest_idx = diffs.idxmin()
 
     if diffs.loc[closest_idx] > tol:
         print(
-            f"[WARN] Nessuna riga con eps vicino a {eps_value} in {csv_path} "
+            f"[WARN] Nessuna riga con {axis_col} vicino a {axis_value} in {csv_path} "
             f"(differenza minima: {diffs.loc[closest_idx]:.6f}). Salto l'aggiornamento."
         )
         return
@@ -167,14 +183,22 @@ def process_folder(folder, models_and_prompts, dataset, judge):
         print(f"[{folder}] nessun sample trovato, salto la cartella.")
         return
 
-    csv_path = os.path.join(os.path.dirname(folder), 'sweep_eps.csv')
+    # decide se stiamo processando la sottocartella n_steps
+    base_name = os.path.basename(folder.rstrip(os.sep))
+    if base_name == 'n_steps':
+        csv_path = os.path.join(os.path.dirname(os.path.dirname(folder)), 'sweep_n_steps.csv')
+        axis_col = 'n_steps'
+    else:
+        csv_path = os.path.join(os.path.dirname(folder), 'sweep_eps.csv')
+        axis_col = 'eps'
+
     if not os.path.exists(csv_path):
-        print(f"[{folder}] sweep_eps.csv non trovato in {os.path.dirname(folder)}, salto gli score.")
+        print(f"[{folder}] {os.path.basename(csv_path)} non trovato in {os.path.dirname(csv_path)}, salto gli score.")
         csv_path = None
 
     for mod_name, mod, prompt in models_and_prompts:
-        # eps_value (dal nome file) -> lista di score, uno per ogni sample
-        scores_by_eps = {}
+        # key_value (eps o n_steps) -> lista di score, uno per ogni sample
+        scores_by_key = {}
 
         for sample_idx, paths in sorted(samples.items()):
             original_path = paths["original"]
@@ -226,23 +250,28 @@ def process_folder(folder, models_and_prompts, dataset, judge):
 
                 if avg_score is None:
                     continue
-
+                # preferisci n_steps quando presente, altrimenti eps
+                n_steps_value = extract_n_steps_from_name(img_path)
                 eps_value = extract_eps_from_name(img_path)
-                if eps_value is None:
-                    print(f"[{folder}] eps non trovato nel nome file {img_path}, salto.")
+                if n_steps_value is not None:
+                    key = n_steps_value
+                elif eps_value is not None:
+                    key = eps_value
+                else:
+                    print(f"[{folder}] né eps né n_steps trovati nel nome file {img_path}, salto.")
                     continue
 
-                scores_by_eps.setdefault(eps_value, []).append(avg_score)
+                scores_by_key.setdefault(key, []).append(avg_score)
 
         if csv_path is None:
             continue
 
         column_name = f"editing_score_{mod_name.lower()}"
-        for eps_value, scores in scores_by_eps.items():
+        for key_value, scores in scores_by_key.items():
             mean_score = sum(scores) / len(scores)
-            update_csv_score(csv_path, eps_value, column_name, mean_score)
+            update_csv_score(csv_path, key_value, column_name, mean_score, axis_col=axis_col)
             print(
-                f"[{folder}] {column_name} @ eps~{eps_value}: "
+                f"[{folder}] {column_name} @{axis_col}~{key_value}: "
                 f"media su {len(scores)} sample = {mean_score:.4f}"
             )
 

@@ -114,7 +114,7 @@ class TEdBenchDataset(Dataset):
     l'esempio idx=1 usa "001.png", e così via.
     """
 
-    MASK_DIR = "./data/tedbench_masks/mask_fine"
+    MASK_DIR = "./data/tedbench_masks"
 
     def __init__(self, split: str = "val", cache_dir: str = "/equilibrium/ldelbene/cache/hf", target_size=(512,512)):
         assert split == "val", f"TEdBench ha solo lo split 'val', ricevuto: {split}"
@@ -134,10 +134,10 @@ class TEdBenchDataset(Dataset):
         sample = self.dataset[idx]
         image = sample["original_image"].convert("RGB")
 
-        mask_path = self.mask_dir / f"{idx:03d}.png"
+        mask_path = self.mask_dir / f"img_{idx}.png"
         assert mask_path.exists(), f"Maschera non trovata: {mask_path}"
         mask = Image.open(mask_path).convert("L")
-        mask = ImageOps.invert(mask)
+        #mask = ImageOps.invert(mask)
         image = image.resize(self.target_size, Image.BICUBIC)
         mask  = mask.resize(self.target_size, Image.NEAREST)
 

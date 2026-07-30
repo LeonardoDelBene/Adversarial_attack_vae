@@ -1,7 +1,6 @@
-import pandas as pd
 import os
-from pathlib import Path
-import re
+import pandas as pd
+
 
 def parse_global_summary(text, filename):
     """Parsa il contenuto di un file global_summary.txt"""
@@ -19,12 +18,18 @@ def parse_global_summary(text, filename):
         'global_lpips_edited': None,
         'attack_success_score': None,
         'attack_successes_count': None,
-        'attack_success_rate': None
+        'attack_success_rate': None,
+        'optimistic_miou_orig': None,
+        'pessimistic_miou_orig': None,
+        'optimistic_miou_edited': None,
+        'pessimistic_miou_edited': None,
     }
 
     lines = text.split('\n')
     in_orig_lpips = False
     in_edited_lpips = False
+    in_orig_miou = False
+    in_edited_miou = False
     fsim_short_count = 0
 
     for i, line in enumerate(lines):
@@ -76,11 +81,20 @@ def parse_global_summary(text, filename):
             in_edited_lpips = True
             continue
 
-        # Reset flags
-        if line.startswith('===') or line.startswith('----'):
-            if 'LPIPS' not in line:
-                in_orig_lpips = False
-                in_edited_lpips = False
+        # Parse Segmentation mIoU sections (match esatto per non confondersi con gli header LPIPS)
+        if line == '---- Original vs Immunized ----':
+            in_orig_miou = True
+            in_edited_miou = False
+            continue
+        if line == '---- Edited vs Adversarial ----':
+            in_orig_miou = False
+            in_edited_miou = True
+            continue
+
+        # Reset flags LPIPS
+        if (line.startswith('===') or line.startswith('----')) and 'LPIPS' not in line:
+            in_orig_lpips = False
+            in_edited_lpips = False
 
         # Parse LPIPS Original vs Immunized
         if in_orig_lpips and line.startswith('Subject LPIPS:'):
@@ -98,6 +112,22 @@ def parse_global_summary(text, filename):
             val = line.split(':', 1)[1].strip() if ':' in line else None
             data['global_lpips_edited'] = float(val) if val and val.lower() != 'nan' else None
 
+        # Parse Segmentation mIoU Original vs Immunized
+        if in_orig_miou and line.startswith('Optimistic mIoU:'):
+            val = line.split(':', 1)[1].strip() if ':' in line else None
+            data['optimistic_miou_orig'] = float(val) if val and val.lower() != 'nan' else None
+        if in_orig_miou and line.startswith('Pessimistic mIoU:'):
+            val = line.split(':', 1)[1].strip() if ':' in line else None
+            data['pessimistic_miou_orig'] = float(val) if val and val.lower() != 'nan' else None
+
+        # Parse Segmentation mIoU Edited vs Adversarial
+        if in_edited_miou and line.startswith('Optimistic mIoU:'):
+            val = line.split(':', 1)[1].strip() if ':' in line else None
+            data['optimistic_miou_edited'] = float(val) if val and val.lower() != 'nan' else None
+        if in_edited_miou and line.startswith('Pessimistic mIoU:'):
+            val = line.split(':', 1)[1].strip() if ':' in line else None
+            data['pessimistic_miou_edited'] = float(val) if val and val.lower() != 'nan' else None
+
         # Parse Qwen Attack Evaluation Summary
         if line.startswith('Average attack success score'):
             val = line.split(':', 1)[1].strip() if ':' in line else None
@@ -113,21 +143,23 @@ def parse_global_summary(text, filename):
 
 def main():
     summary_files = [
-        "./output/InstructionPix2Pix/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt",
-        "./output/SD_Inpainting/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt",
-        "./output/SD_Img2Img/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt",
 
-        "./output/InstructionPix2Pix/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt",
-        "./output/SD_Inpainting/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt",
-        "./output/SD_Img2Img/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt",
+        "./output/InstructionPix2Pix/full_dataset/TedBench_diff_noise_all/global_summary.txt",
+        "./output/SD_Inpainting/full_dataset/TedBench_diff_noise_all/global_summary.txt",
+        "./output/SD_Img2Img/full_dataset/TedBench_diff_noise_all/global_summary.txt",
 
-        "./output/InstructionPix2Pix/full_dataset/DiffVax/global_summary.txt",
-        "./output/SD_Inpainting/full_dataset/DiffVax/global_summary.txt",
-        "./output/SD_Img2Img/full_dataset/DiffVax/global_summary.txt",
+    
+        "./output/InstructionPix2Pix/full_dataset/TedBench_diff_noise_mask/global_summary.txt",
+        "./output/SD_Inpainting/full_dataset/TedBench_diff_noise_mask/global_summary.txt",
+        "./output/SD_Img2Img/full_dataset/TedBench_diff_noise_mask/global_summary.txt",
 
-        "./output/InstructionPix2Pix/full_dataset/PhotoGuard/global_summary.txt",
-        "./output/SD_Inpainting/full_dataset/PhotoGuard/global_summary.txt",
-        "./output/SD_Img2Img/full_dataset/PhotoGuard/global_summary.txt",
+        "./output/InstructionPix2Pix/full_dataset/TedBench_photoguard/global_summary.txt",
+        "./output/SD_Inpainting/full_dataset/TedBench_photoguard/global_summary.txt",
+        "./output/SD_Img2Img/full_dataset/TedBench_photoguard/global_summary.txt",
+
+        "./output/InstructionPix2Pix/full_dataset/TedBench_diff_noise_mask_invert/global_summary.txt",
+        "./output/SD_Inpainting/full_dataset/TedBench_diff_noise_mask_invert/global_summary.txt",
+        "./output/SD_Img2Img/full_dataset/TedBench_diff_noise_mask_invert/global_summary.txt",
 
     ]
 
@@ -170,12 +202,16 @@ def main():
         'global_lpips_orig': 'LPIPS Glob. Orig',
         'subject_lpips_edited': 'LPIPS Sogg. Edit',
         'global_lpips_edited': 'LPIPS Glob. Edit',
-        'attack_success_rate': 'Tasso Attacco'
+        'attack_success_rate': 'Tasso Attacco',
+        'optimistic_miou_orig': 'mIoU Ottim. Orig',
+        'pessimistic_miou_orig': 'mIoU Pessim. Orig',
+        'optimistic_miou_edited': 'mIoU Ottim. Edit',
+        'pessimistic_miou_edited': 'mIoU Pessim. Edit',
     })
 
     print("Colonne rinominate")
 
-    output_file = 'metriche_globali_2.csv'
+    output_file = 'metriche_globali_TedBench.csv'
     df.to_csv(output_file, index=False)
     print(f"✓ Esportato: {output_file}")
 
