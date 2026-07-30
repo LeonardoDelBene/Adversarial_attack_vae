@@ -62,7 +62,7 @@ FOLDERS = [
 # Prompt per ciascun modello di editing
 PROMPT_ATTACK = "A person in a garden"            # Attack (inpainting)
 PROMPT_INSTRUCTPIX2PIX = "Change the color's hair to blonde"                # AttackInstructPix2Pix
-PROMPT_SD = "Change the color's hair to blonde"                 # AttackSD (img2img)
+PROMPT_SD = "A Person with a cap"                 # AttackSD (img2img)
 
 
 IMG_EXTENSIONS = ('.png', '.jpg', '.jpeg')

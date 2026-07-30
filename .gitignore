@@ -23,6 +23,7 @@ logs/
 *.pt
 *.pth
 *.ckpt
+*.ipynb
 
 # Cache HuggingFace
 cache/

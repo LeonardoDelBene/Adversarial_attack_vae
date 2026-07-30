@@ -47,10 +47,10 @@ def get_attack_model_label(model_attack: str) -> str:
     return labels.get(model_attack, model_attack)
 
 
-def get_output_dir(base_output_dir, model_attack, run_wandb, sample_idx):
+def get_output_dir(base_output_dir, model_attack, run_name, sample_idx):
     subfolder = get_attack_subfolder(model_attack)
     if sample_idx == "full_dataset":
-        output_dir = os.path.join(base_output_dir, subfolder, "full_dataset", run_wandb)
+        output_dir = os.path.join(base_output_dir, subfolder, "full_dataset", run_name)
     else:
         output_dir = os.path.join(base_output_dir, subfolder, f"img_{sample_idx}")
     os.makedirs(output_dir, exist_ok=True)
@@ -441,7 +441,7 @@ def run_on_full_dataset(config):
                     output_dir_base = get_output_dir(
                         config["base_output_dir"],
                         model_name,
-                        config["run_wandb"],
+                        config["run_name"],
                         sample_idx="full_dataset"
                     )
                     sample_output_dir = os.path.join(output_dir_base, f"img_{sample_idx}")
@@ -490,9 +490,9 @@ def get_config():
     return {
         "dataset_type":         "TEdBench",  # DiffVax | COCO | Oxford-Pet | MagicBrush | TEdBench
         "dataset_split":        "validation",
-        "sample_idx":           2,
-        "model_attack":         "sd_inpainting", # "sd_pix2pix", "sd_inpainting", o "sd_img2img", "sd_xl_img2img"
-        "edit_prompt":          "A circus horse", 
+        "sample_idx":           190,
+        "model_attack":         "sd_img2img", # "sd_pix2pix", "sd_inpainting", o "sd_img2img", "sd_xl_img2img"
+        "edit_prompt":          "A Person with a cap", 
 
         "photo guard":          False,
         "alpha":                2 / 255,
@@ -509,13 +509,13 @@ def get_config():
 
         "seed":                 2043,
         "load_existing":        True,
-        "checkpoint_path":      os.path.join("checkpoints", "unet_best_nv5dqvvb.pth"), #  diffVax_trained: unet_best_nv5dqvvb.pth DiffVax: diffvax_trained.pth magicbrush: unet_best_nkrxr2ji.pth
+        "checkpoint_path":      os.path.join("checkpoints", "unet_best_nkrxr2ji.pth"), #  trained on DiffVax: unet_best_diffvax_ft.pth DiffVax: diffvax_trained.pth trained on magicbrush: unet_best_magic_brush_ft.pth
         "molt_filter":          2,
 
         "base_output_dir":      "output",
         "dataset_path":         "./data/DiffVaxDataset_local",
         "run_full_dataset":     True,
-        "run_wandb":            "TedBench_diff_noise_mask_invert"
+        "run_name":            "TedBench_magic_noise_mask"
     }
 
 def main():
@@ -527,7 +527,7 @@ def main():
         output_dir = get_output_dir(
             config["base_output_dir"],
             config["model_attack"],
-            config["run_wandb"],
+            config["run_name"],
             config["sample_idx"]
         )
         attack_model, immunization_mdl = load_models(config)
