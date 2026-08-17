@@ -488,9 +488,9 @@ def run_on_full_dataset(config):
 
 def get_config():
     return {
-        "dataset_type":         "TEdBench",  # DiffVax | COCO | Oxford-Pet | MagicBrush | TEdBench
+        "dataset_type":         "DiffVax",  # DiffVax | COCO | Oxford-Pet | MagicBrush | TEdBench
         "dataset_split":        "validation",
-        "sample_idx":           190,
+        "sample_idx":           191,
         "model_attack":         "sd_img2img", # "sd_pix2pix", "sd_inpainting", o "sd_img2img", "sd_xl_img2img"
         "edit_prompt":          "A Person with a cap", 
 
@@ -499,7 +499,7 @@ def get_config():
         
         "is_2_stage":           True,
         "targeted":             True,
-        "target":               "gray", # gray | white |black | mean | opt_diffvax | opt_magicbrush
+        "target":               "opt_diffvax", # gray | white |black | mean | opt_diffvax | opt_magicbrush
         "noise_mode":           "mask", # mask | all
         "lr":                   1e-4,
         "eps":                  64/255,
@@ -509,13 +509,13 @@ def get_config():
 
         "seed":                 2043,
         "load_existing":        True,
-        "checkpoint_path":      os.path.join("checkpoints", "unet_best_nkrxr2ji.pth"), #  trained on DiffVax: unet_best_diffvax_ft.pth DiffVax: diffvax_trained.pth trained on magicbrush: unet_best_magic_brush_ft.pth
+        "checkpoint_path":      os.path.join("checkpoints", "unet_best_magic_brush_ft.pth"), #  trained on DiffVax: unet_best_diffvax_ft.pth DiffVax: diffvax_trained.pth trained on magicbrush: unet_best_magic_brush_ft.pth
         "molt_filter":          2,
 
         "base_output_dir":      "output",
         "dataset_path":         "./data/DiffVaxDataset_local",
-        "run_full_dataset":     True,
-        "run_name":            "TedBench_magic_noise_mask"
+        "run_full_dataset":     False,
+        "run_name":            "DiffVax_magic_opt_mask"
     }
 
 def main():

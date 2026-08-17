@@ -1,11 +1,62 @@
 import os
+import json
 import pandas as pd
 
 
-def parse_global_summary(text, filename):
+# =====================================================================
+# CONFIGURAZIONE: elenco delle cartelle "root" da analizzare.
+# Per ciascuna root lo script cerca al suo interno:
+#   - global_summary.txt  -> se presente, contribuisce al CSV delle metriche globali
+#   - summary.json         -> se presente, contribuisce al CSV di robustness
+# Una root può avere uno solo dei due file, entrambi, o nessuno: lo script
+# genera automaticamente solo i CSV per cui ha trovato almeno un dato.
+# =====================================================================
+ROOTS = [
+    "./robustness_results/InstructPix2Pix/DiffVax",
+    "./robustness_results/SD_Inpainting/DiffVax",
+    "./robustness_results/SD_Img2Img/DiffVax",
+
+    "./robustness_results/InstructPix2Pix/MagicBrush_gray_FT",
+    "./robustness_results/SD_Inpainting/MagicBrush_gray_FT",
+    "./robustness_results/SD_Img2Img/MagicBrush_gray_FT",
+
+    "./robustness_results/InstructPix2Pix/MagicBrush_photoguard",
+    "./robustness_results/SD_Inpainting/MagicBrush_photoguard",
+    "./robustness_results/SD_Img2Img/MagicBrush_photoguard",
+
+    "./robustness_results/InstructPix2Pix/MagicBrush_gray_FT",
+    "./robustness_results/SD_Inpainting/MagicBrush_gray_FT",
+    "./robustness_results/SD_Img2Img/MagicBrush_gray_FT",
+
+    "./robustness_results/InstructPix2Pix/MagicBrush_target_opt",
+    "./robustness_results/SD_Inpainting/MagicBrush_target_opt",
+    "./robustness_results/SD_Img2Img/MagicBrush_target_opt",
+
+    "./robustness_results/InstructPix2Pix/PhotoGuard",
+    "./robustness_results/SD_Inpainting/PhotoGuard",
+    "./robustness_results/SD_Img2Img/PhotoGuard",
+
+    "./robustness_results/InstructPix2Pix/VAE_MSE_FT_2_STAGE",
+    "./robustness_results/SD_Inpainting/VAE_MSE_FT_2_STAGE",
+    "./robustness_results/SD_Img2Img/VAE_MSE_FT_2_STAGE",
+
+    
+    "./robustness_results/InstructPix2Pix/VAE_MSE_TARGET_OPT",
+    "./robustness_results/SD_Inpainting/VAE_MSE_TARGET_OPT",
+    "./robustness_results/SD_Img2Img/VAE_MSE_TARGET_OPT",
+    
+]
+
+
+def exp_name_from_root(root):
+    """Ricava il nome esperimento da una root, es. output/SD_Inpainting/.../TedBench_x"""
+    return root.replace("./output/", "").replace("output/", "").rstrip("/")
+ 
+ 
+def parse_global_summary(text, exp_name):
     """Parsa il contenuto di un file global_summary.txt"""
     data = {
-        'name': filename.replace('output/', '').replace('/global_summary.txt', ''),
+        'name': exp_name,
         'psnr_quality': None,
         'ssim_quality': None,
         'fsim_quality': None,
@@ -24,17 +75,17 @@ def parse_global_summary(text, filename):
         'optimistic_miou_edited': None,
         'pessimistic_miou_edited': None,
     }
-
+ 
     lines = text.split('\n')
     in_orig_lpips = False
     in_edited_lpips = False
     in_orig_miou = False
     in_edited_miou = False
     fsim_short_count = 0
-
-    for i, line in enumerate(lines):
+ 
+    for line in lines:
         line = line.strip()
-
+ 
         # Parse PSNR
         if 'Average original vs immunized PSNR:' in line:
             val = line.split(':', 1)[1].strip() if ':' in line else None
@@ -42,7 +93,7 @@ def parse_global_summary(text, filename):
         if 'Average edited_original vs edited_immunized PSNR:' in line:
             val = line.split(':', 1)[1].strip() if ':' in line else None
             data['psnr_protection'] = float(val) if val and val.lower() != 'nan' else None
-
+ 
         # Parse SSIM
         if 'Average original vs immunized SSIM:' in line:
             val = line.split(':', 1)[1].strip() if ':' in line else None
@@ -50,7 +101,7 @@ def parse_global_summary(text, filename):
         if 'Average edited_original vs edited_immunized SSIM:' in line:
             val = line.split(':', 1)[1].strip() if ':' in line else None
             data['ssim_protection'] = float(val) if val and val.lower() != 'nan' else None
-
+ 
         # Parse FSIM long form
         if 'Average original vs immunized FSIM:' in line or 'Average original vs immunized FSIM (valid=' in line:
             parts = line.split(':', 1)
@@ -60,7 +111,7 @@ def parse_global_summary(text, filename):
             parts = line.split(':', 1)
             val = parts[1].strip() if len(parts) > 1 else None
             data['fsim_protection'] = float(val) if val and val.lower() != 'nan' else None
-
+ 
         # Parse FSIM compact form
         if line.startswith('FSIM:'):
             val = line.split(':', 1)[1].strip() if ':' in line else None
@@ -70,7 +121,7 @@ def parse_global_summary(text, filename):
             elif fsim_short_count == 1:
                 data['fsim_protection'] = fval
             fsim_short_count += 1
-
+ 
         # Parse LPIPS sections
         if 'Original vs Immunized LPIPS' in line:
             in_orig_lpips = True
@@ -80,7 +131,7 @@ def parse_global_summary(text, filename):
             in_orig_lpips = False
             in_edited_lpips = True
             continue
-
+ 
         # Parse Segmentation mIoU sections (match esatto per non confondersi con gli header LPIPS)
         if line == '---- Original vs Immunized ----':
             in_orig_miou = True
@@ -90,12 +141,12 @@ def parse_global_summary(text, filename):
             in_orig_miou = False
             in_edited_miou = True
             continue
-
+ 
         # Reset flags LPIPS
         if (line.startswith('===') or line.startswith('----')) and 'LPIPS' not in line:
             in_orig_lpips = False
             in_edited_lpips = False
-
+ 
         # Parse LPIPS Original vs Immunized
         if in_orig_lpips and line.startswith('Subject LPIPS:'):
             val = line.split(':', 1)[1].strip() if ':' in line else None
@@ -103,7 +154,7 @@ def parse_global_summary(text, filename):
         if in_orig_lpips and line.startswith('Global LPIPS:'):
             val = line.split(':', 1)[1].strip() if ':' in line else None
             data['global_lpips_orig'] = float(val) if val and val.lower() != 'nan' else None
-
+ 
         # Parse LPIPS Edited vs Adversarial
         if in_edited_lpips and line.startswith('Subject LPIPS:'):
             val = line.split(':', 1)[1].strip() if ':' in line else None
@@ -111,7 +162,7 @@ def parse_global_summary(text, filename):
         if in_edited_lpips and line.startswith('Global LPIPS:'):
             val = line.split(':', 1)[1].strip() if ':' in line else None
             data['global_lpips_edited'] = float(val) if val and val.lower() != 'nan' else None
-
+ 
         # Parse Segmentation mIoU Original vs Immunized
         if in_orig_miou and line.startswith('Optimistic mIoU:'):
             val = line.split(':', 1)[1].strip() if ':' in line else None
@@ -119,7 +170,7 @@ def parse_global_summary(text, filename):
         if in_orig_miou and line.startswith('Pessimistic mIoU:'):
             val = line.split(':', 1)[1].strip() if ':' in line else None
             data['pessimistic_miou_orig'] = float(val) if val and val.lower() != 'nan' else None
-
+ 
         # Parse Segmentation mIoU Edited vs Adversarial
         if in_edited_miou and line.startswith('Optimistic mIoU:'):
             val = line.split(':', 1)[1].strip() if ':' in line else None
@@ -127,7 +178,7 @@ def parse_global_summary(text, filename):
         if in_edited_miou and line.startswith('Pessimistic mIoU:'):
             val = line.split(':', 1)[1].strip() if ':' in line else None
             data['pessimistic_miou_edited'] = float(val) if val and val.lower() != 'nan' else None
-
+ 
         # Parse Qwen Attack Evaluation Summary
         if line.startswith('Average attack success score'):
             val = line.split(':', 1)[1].strip() if ':' in line else None
@@ -138,59 +189,67 @@ def parse_global_summary(text, filename):
         if line.startswith('Attack success rate:'):
             val = line.split(':', 1)[1].strip() if ':' in line else None
             data['attack_success_rate'] = float(val) if val and val.lower() != 'nan' else None
-
+ 
     return data
-
-def main():
-    summary_files = [
-
-        "./output/InstructionPix2Pix/full_dataset/TedBench_diff_noise_all/global_summary.txt",
-        "./output/SD_Inpainting/full_dataset/TedBench_diff_noise_all/global_summary.txt",
-        "./output/SD_Img2Img/full_dataset/TedBench_diff_noise_all/global_summary.txt",
-
-    
-        "./output/InstructionPix2Pix/full_dataset/TedBench_diff_noise_mask/global_summary.txt",
-        "./output/SD_Inpainting/full_dataset/TedBench_diff_noise_mask/global_summary.txt",
-        "./output/SD_Img2Img/full_dataset/TedBench_diff_noise_mask/global_summary.txt",
-
-        "./output/InstructionPix2Pix/full_dataset/TedBench_photoguard/global_summary.txt",
-        "./output/SD_Inpainting/full_dataset/TedBench_photoguard/global_summary.txt",
-        "./output/SD_Img2Img/full_dataset/TedBench_photoguard/global_summary.txt",
-
-        "./output/InstructionPix2Pix/full_dataset/TedBench_diff_noise_mask_invert/global_summary.txt",
-        "./output/SD_Inpainting/full_dataset/TedBench_diff_noise_mask_invert/global_summary.txt",
-        "./output/SD_Img2Img/full_dataset/TedBench_diff_noise_mask_invert/global_summary.txt",
-
-    ]
-
-    print(f"Cercando {len(summary_files)} file di riepilogo...")
-
-    all_data = []
-    loaded_files = 0
-
-    for file_path in summary_files:
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                text = f.read()
-            parsed_data = parse_global_summary(text, file_path)
-            all_data.append(parsed_data)
-            loaded_files += 1
-            print(f"✓ Caricato: {file_path}")
+ 
+ 
+def parse_robustness_json(json_path, exp_name):
+    """
+    Parsa un file summary.json con struttura del tipo:
+    {
+        "clean@None": {"attack_success_score": ..., "optimistic_iou": ..., "pessimistic_iou": ...},
+        "jpeg@85": {...},
+        ...
+    }
+    Restituisce una lista di righe in formato long (una riga per ogni tipo di attacco).
+    """
+    with open(json_path, 'r') as f:
+        raw = json.load(f)
+ 
+    rows = []
+    for attack_key, metrics in raw.items():
+        # Salta eventuali chiavi top-level che non sono dizionari di metriche
+        # (es. metadati tipo "n_samples": 30 accanto alle chiavi degli attacchi)
+        if not isinstance(metrics, dict):
+            print(f"  ⚠ Chiave '{attack_key}' ignorata (valore non è un dizionario): {metrics!r}")
+            continue
+ 
+        if '@' in attack_key:
+            attack_type, attack_param = attack_key.split('@', 1)
         else:
-            print(f"✗ File non trovato: {file_path}")
-
-    print(f"\nTotale file caricati: {loaded_files}/{len(summary_files)}")
-
+            attack_type, attack_param = attack_key, None
+ 
+        rows.append({
+            'Esperimento': exp_name,
+            'attack_key': attack_key,
+            'attack_type': attack_type,
+            'attack_param': attack_param,
+            'attack_success_score': metrics.get('attack_success_score'),
+            'optimistic_iou': metrics.get('optimistic_iou'),
+            'pessimistic_iou': metrics.get('pessimistic_iou'),
+        })
+ 
+    return rows
+ 
+ 
+def build_global_summary_csv(entries):
+    """entries: lista di (exp_name, global_summary_path) per cui il file esiste."""
+    print(f"\n--- global_summary.txt trovati: {len(entries)} ---")
+ 
+    all_data = []
+    for exp_name, path in entries:
+        with open(path, 'r') as f:
+            text = f.read()
+        all_data.append(parse_global_summary(text, exp_name))
+        print(f"✓ Caricato: {path}")
+ 
     df = pd.DataFrame(all_data)
-
-    # Formatta le colonne numeriche a 4 decimali
+ 
     numeric_cols = df.select_dtypes(include=['float64']).columns
     for col in numeric_cols:
         df[col] = df[col].apply(lambda x: f'{x:.4f}' if pd.notna(x) else '-')
-
-    print(f"\nDataFrame creato con {len(df)} righe")
-
-    df_renamed = df.rename(columns={
+ 
+    df = df.rename(columns={
         'name': 'Esperimento',
         'psnr_quality': 'PSNR Qualità',
         'ssim_quality': 'SSIM Qualità',
@@ -208,13 +267,91 @@ def main():
         'optimistic_miou_edited': 'mIoU Ottim. Edit',
         'pessimistic_miou_edited': 'mIoU Pessim. Edit',
     })
-
-    print("Colonne rinominate")
-
+ 
     output_file = 'metriche_globali_TedBench.csv'
     df.to_csv(output_file, index=False)
-    print(f"✓ Esportato: {output_file}")
-
+    print(f"✓ Esportato: {output_file} ({len(df)} righe)")
+ 
+ 
+def build_robustness_csv(entries):
+    """entries: lista di (exp_name, summary_json_path) per cui il file esiste."""
+    print(f"\n--- summary.json trovati: {len(entries)} ---")
+ 
+    all_rows = []
+    for exp_name, path in entries:
+        all_rows.extend(parse_robustness_json(path, exp_name))
+        print(f"✓ Caricato: {path}")
+ 
+    df = pd.DataFrame(all_rows)
+ 
+    numeric_cols = ['attack_success_score', 'optimistic_iou', 'pessimistic_iou']
+    for col in numeric_cols:
+        df[col] = df[col].apply(lambda x: f'{x:.4f}' if pd.notna(x) else '-')
+ 
+    df_renamed = df.rename(columns={
+        'attack_key': 'Attacco',
+        'attack_type': 'Tipo Attacco',
+        'attack_param': 'Parametro',
+        'attack_success_score': 'Punteggio Successo Attacco',
+        'optimistic_iou': 'IoU Ottimistico',
+        'pessimistic_iou': 'IoU Pessimistico',
+    })
+ 
+    output_file = 'metriche_robustness.csv'
+    df_renamed.to_csv(output_file, index=False)
+    print(f"✓ Esportato: {output_file} ({len(df_renamed)} righe)")
+ 
+    # Versione wide: una riga per esperimento, colonne per ogni combinazione attacco/metrica
+    df_wide = df.pivot_table(
+        index='Esperimento',
+        columns='attack_key',
+        values=numeric_cols,
+        aggfunc='first'
+    )
+    df_wide.columns = [f'{metric}__{attack}' for metric, attack in df_wide.columns]
+    df_wide = df_wide.reset_index()
+ 
+    output_file_wide = 'metriche_robustness_wide.csv'
+    df_wide.to_csv(output_file_wide, index=False)
+    print(f"✓ Esportato: {output_file_wide} ({len(df_wide)} righe)")
+ 
+ 
+def main():
+    print(f"Cercando dati in {len(ROOTS)} cartelle root...")
+ 
+    global_entries = []       # (exp_name, path) per global_summary.txt trovati
+    robustness_entries = []   # (exp_name, path) per summary.json trovati
+ 
+    for root in ROOTS:
+        exp_name = exp_name_from_root(root)
+ 
+        gs_path = os.path.join(root, 'global_summary.txt')
+        rj_path = os.path.join(root, 'summary.json')
+ 
+        found_any = False
+ 
+        if os.path.exists(gs_path):
+            global_entries.append((exp_name, gs_path))
+            found_any = True
+        if os.path.exists(rj_path):
+            robustness_entries.append((exp_name, rj_path))
+            found_any = True
+ 
+        if not found_any:
+            print(f"✗ Nessun file trovato in: {root}")
+ 
+    # Genera solo i CSV per cui esistono dati
+    if global_entries:
+        build_global_summary_csv(global_entries)
+    else:
+        print("\nNessun global_summary.txt trovato: CSV metriche globali non generato.")
+ 
+    if robustness_entries:
+        build_robustness_csv(robustness_entries)
+    else:
+        print("\nNessun summary.json trovato: CSV robustness non generato.")
+ 
+ 
 if __name__ == "__main__":
     main()
-
+ 
