@@ -12,39 +12,29 @@ import pandas as pd
 # genera automaticamente solo i CSV per cui ha trovato almeno un dato.
 # =====================================================================
 ROOTS = [
-    "./robustness_results/InstructPix2Pix/DiffVax",
-    "./robustness_results/SD_Inpainting/DiffVax",
-    "./robustness_results/SD_Img2Img/DiffVax",
-
-    "./robustness_results/InstructPix2Pix/MagicBrush_gray_FT",
-    "./robustness_results/SD_Inpainting/MagicBrush_gray_FT",
-    "./robustness_results/SD_Img2Img/MagicBrush_gray_FT",
-
-    "./robustness_results/InstructPix2Pix/MagicBrush_photoguard",
-    "./robustness_results/SD_Inpainting/MagicBrush_photoguard",
-    "./robustness_results/SD_Img2Img/MagicBrush_photoguard",
-
-    "./robustness_results/InstructPix2Pix/MagicBrush_gray_FT",
-    "./robustness_results/SD_Inpainting/MagicBrush_gray_FT",
-    "./robustness_results/SD_Img2Img/MagicBrush_gray_FT",
-
-    "./robustness_results/InstructPix2Pix/MagicBrush_target_opt",
-    "./robustness_results/SD_Inpainting/MagicBrush_target_opt",
-    "./robustness_results/SD_Img2Img/MagicBrush_target_opt",
-
-    "./robustness_results/InstructPix2Pix/PhotoGuard",
-    "./robustness_results/SD_Inpainting/PhotoGuard",
-    "./robustness_results/SD_Img2Img/PhotoGuard",
-
-    "./robustness_results/InstructPix2Pix/VAE_MSE_FT_2_STAGE",
-    "./robustness_results/SD_Inpainting/VAE_MSE_FT_2_STAGE",
-    "./robustness_results/SD_Img2Img/VAE_MSE_FT_2_STAGE",
-
     
-    "./robustness_results/InstructPix2Pix/VAE_MSE_TARGET_OPT",
-    "./robustness_results/SD_Inpainting/VAE_MSE_TARGET_OPT",
-    "./robustness_results/SD_Img2Img/VAE_MSE_TARGET_OPT",
-    
+    "./output/SD_Inpainting/full_dataset/VAE_MSE_FT_2_STAGE",
+    "./output/SD_Img2Img/full_dataset/VAE_MSE_FT_2_STAGE",
+    "./output/InstructionPix2Pix/full_dataset/VAE_MSE_FT_2_STAGE",
+
+    "./output/SD_Inpainting/full_dataset/VAE_MSE_BLACK",
+    "./output/SD_Img2Img/full_dataset/VAE_MSE_BLACK",
+    "./output/InstructionPix2Pix/full_dataset/VAE_MSE_BLACK",
+
+        "./output/SD_Inpainting/full_dataset/VAE_MSE_WHITE",
+    "./output/SD_Img2Img/full_dataset/VAE_MSE_WHITE",
+    "./output/InstructionPix2Pix/full_dataset/VAE_MSE_WHITE",
+
+        "./output/SD_Inpainting/full_dataset/VAE_MSE_MEAN",
+    "./output/SD_Img2Img/full_dataset/VAE_MSE_MEAN",
+    "./output/InstructionPix2Pix/full_dataset/VAE_MSE_MEAN",
+
+        "./output/SD_Inpainting/full_dataset/VAE_MSE_TARGET_OPT",
+    "./output/SD_Img2Img/full_dataset/VAE_MSE_TARGET_OPT",
+    "./output/InstructionPix2Pix/full_dataset/VAE_MSE_TARGET_OPT",
+
+
+
 ]
 
 
@@ -268,7 +258,7 @@ def build_global_summary_csv(entries):
         'pessimistic_miou_edited': 'mIoU Pessim. Edit',
     })
  
-    output_file = 'metriche_globali_TedBench.csv'
+    output_file = 'metriche_variazione_target.csv'
     df.to_csv(output_file, index=False)
     print(f"✓ Esportato: {output_file} ({len(df)} righe)")
  

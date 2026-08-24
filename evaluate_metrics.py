@@ -20,27 +20,17 @@ if __name__ == "__main__":
     metrics_models = load_metrics_models()
 
     roots = [
-        "./output/SD_Img2Img/full_dataset/DiffVax_magic_gray_all",
-        "./output/SD_Inpainting/full_dataset/DiffVax_magic_gray_all",
-        "./output/InstructionPix2Pix/full_dataset/DiffVax_magic_gray_all",
-
-        "./output/SD_Img2Img/full_dataset/DiffVax_magic_gray_mask",
-        "./output/SD_Inpainting/full_dataset/DiffVax_magic_gray_mask",
-        "./output/InstructionPix2Pix/full_dataset/DiffVax_magic_gray_mask",
-
-        "./output/SD_Img2Img/full_dataset/DiffVax_magic_opt_mask",
-        "./output/SD_Inpainting/full_dataset/DiffVax_magic_opt_mask",
-        "./output/InstructionPix2Pix/full_dataset/DiffVax_magic_opt_mask",
+        "./output/SD_Img2Img/full_dataset/VAE_MSE_MEAN",
 
     ]
 
     for root in roots:
         metrics_models["psnr"].evaluate_folder(root)
-        metrics_models["ssim"].evaluate_folder(root)
-        metrics_models["fsim"].evaluate_folder(root)
-        metrics_models["masked"].evaluate_folder(root)
-        metrics_models["editing_score"].evaluate_folder(root)
-        metrics_models["seg"].evaluate_folder(root)
+        #metrics_models["ssim"].evaluate_folder(root)
+        #metrics_models["fsim"].evaluate_folder(root)
+        #metrics_models["masked"].evaluate_folder(root)
+        #metrics_models["editing_score"].evaluate_folder(root)
+        #metrics_models["seg"].evaluate_folder(root)
         #metrics_models["editing_score"].evaluate_folder_identity(root)
 
         print(f"Done {root}")

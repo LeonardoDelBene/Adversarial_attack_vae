@@ -36,19 +36,43 @@ DATA_FILES = [
     'output/SD_Inpainting/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt',
     'output/SD_Img2Img/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt',
     'output/InstructionPix2Pix/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt',
-    'output/SD_Inpainting/full_dataset/DiffVax/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/DiffVax/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/DiffVax/global_summary.txt',
-    'output/SD_Inpainting/full_dataset/VAE_MSE_FT/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/VAE_MSE_FT/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/VAE_MSE_FT/global_summary.txt',
-    'output/SD_Inpainting/full_dataset/VAE_MSE/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/VAE_MSE/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/VAE_MSE/global_summary.txt',
-      'output/SD_Inpainting/full_dataset/PhotoGuard/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/PhotoGuard/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/PhotoGuard/global_summary.txt',
+    'output/SD_Inpainting/full_dataset/VAE_MSE_BLACK/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/VAE_MSE_BLACK/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/VAE_MSE_BLACK/global_summary.txt',
+    'output/SD_Inpainting/full_dataset/VAE_MSE_WHITE/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/VAE_MSE_WHITE/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/VAE_MSE_WHITE/global_summary.txt',
+    'output/SD_Inpainting/full_dataset/VAE_MSE_MEAN/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/VAE_MSE_MEAN/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/VAE_MSE_MEAN/global_summary.txt',
+      'output/SD_Inpainting/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt',
 ]
+
+
+# ============================================================================
+# NOMI VISUALIZZATI PER LE CONFIGURAZIONI (METODI)
+# ============================================================================
+# Mappa il nome "grezzo" della cartella (es. VAE_MSE_TARGET_OPT) al nome
+# che vuoi vedere nella legenda e nelle etichette del grafico. Se un
+# metodo non compare qui, viene mostrato il nome grezzo così com'è
+# (fallback automatico, nessun errore se dimentichi una voce).
+METHOD_LABELS: Dict[str, str] = {
+    'VAE_MSE_FT_2_STAGE': 'Gray',
+    'VAE_MSE_BLACK': 'Black',
+    'VAE_MSE_WHITE': 'White',
+    'VAE_MSE_MEAN': 'Mean',
+    'VAE_MSE_TARGET_OPT': 'Opt.',
+}
+
+
+def display_name(method: str) -> str:
+    """
+    Restituisce il nome da mostrare in legenda per un dato metodo,
+    usando METHOD_LABELS se presente, altrimenti il nome grezzo.
+    """
+    return METHOD_LABELS.get(method, method)
 
 
 # ============================================================================
@@ -385,11 +409,12 @@ def create_plot(
             hatch=hatch,
         )
 
-    # Etichette dell'asse x: valore di Subject LPIPS per ciascun metodo
-    xtick_labels = [f"{lpips_by_method[m]:.3f}" for m in methods]
+    # Etichette dell'asse x: nome visualizzato del metodo + valore di
+    # Subject LPIPS, per ciascun metodo
+    xtick_labels = [f"{display_name(m)}\n({lpips_by_method[m]:.3f})" for m in methods]
     ax.set_xticks(x)
     ax.set_xticklabels(xtick_labels, rotation=20, ha='right', fontsize=10)
-    ax.set_xlabel('Subject LPIPS (Immunized)', fontsize=12, fontweight='bold')
+    ax.set_xlabel('Configurazione (Subject LPIPS)', fontsize=12, fontweight='bold')
     ax.set_ylabel(y_label, fontsize=12, fontweight='bold')
     ax.set_title(title, fontsize=14, fontweight='bold')
     ax.grid(True, axis='y', alpha=0.3, linestyle='--')
@@ -398,7 +423,7 @@ def create_plot(
     # metodo corrisponde ciascun valore di LPIPS sull'asse x), sfumatura/
     # hatch = pipeline/media
     method_handles = [
-        Patch(facecolor=color_map[m], edgecolor='black', label=m) for m in methods
+        Patch(facecolor=color_map[m], edgecolor='black', label=display_name(m)) for m in methods
     ]
 
     pipeline_handles = []
@@ -411,7 +436,7 @@ def create_plot(
     )
 
     legend1 = ax.legend(
-        handles=method_handles, title='Metodo',
+        handles=method_handles, title='Configurazione',
         bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9
     )
     ax.add_artist(legend1)
@@ -486,7 +511,7 @@ def main():
             y_column='qwen_score',
             y_label='Qwen Attack Success Score (1-7)',
             title='Relazione tra Subject LPIPS e Qwen Score',
-            output_path="lpips_vs_qwen_score.png",
+            output_path="lpips_vs_qwen_score_scelta_target.png",
         )
     except Exception as e:
         print(f"❌ Errore nella creazione del grafico 1: {e}")
@@ -501,7 +526,7 @@ def main():
                 y_column='attack_success_rate',
                 y_label='Attack Success Rate',
                 title='Relazione tra Subject LPIPS e Attack Success Rate',
-                output_path="lpips_vs_attack_success_rate.png",
+                output_path="lpips_vs_attack_success_rate_scelta_target.png",
             )
         except Exception as e:
             print(f"❌ Errore nella creazione del grafico 2: {e}")
