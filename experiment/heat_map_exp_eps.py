@@ -34,7 +34,7 @@ EPS_LABELS = [
 ]
 
 # Scegli il valore da usare: "l_vae" o "subject_lpips".
-METRIC_NAME = "subject_lpips"
+METRIC_NAME = "l_vae"
 
 # Imposta a True se per questa metrica un valore più basso è migliore
 # (es. LPIPS, l_vae), a False se un valore più alto è migliore

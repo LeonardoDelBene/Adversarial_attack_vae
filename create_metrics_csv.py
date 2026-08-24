@@ -17,21 +17,13 @@ ROOTS = [
     "./output/SD_Img2Img/full_dataset/VAE_MSE_FT_2_STAGE",
     "./output/InstructionPix2Pix/full_dataset/VAE_MSE_FT_2_STAGE",
 
-    "./output/SD_Inpainting/full_dataset/VAE_MSE_BLACK",
-    "./output/SD_Img2Img/full_dataset/VAE_MSE_BLACK",
-    "./output/InstructionPix2Pix/full_dataset/VAE_MSE_BLACK",
+    "./output/SD_Inpainting/full_dataset/VAE_MSE_FT",
+    "./output/SD_Img2Img/full_dataset/VAE_MSE_FT",
+    "./output/InstructionPix2Pix/full_dataset/VAE_MSE_FT",
 
-        "./output/SD_Inpainting/full_dataset/VAE_MSE_WHITE",
-    "./output/SD_Img2Img/full_dataset/VAE_MSE_WHITE",
-    "./output/InstructionPix2Pix/full_dataset/VAE_MSE_WHITE",
-
-        "./output/SD_Inpainting/full_dataset/VAE_MSE_MEAN",
-    "./output/SD_Img2Img/full_dataset/VAE_MSE_MEAN",
-    "./output/InstructionPix2Pix/full_dataset/VAE_MSE_MEAN",
-
-        "./output/SD_Inpainting/full_dataset/VAE_MSE_TARGET_OPT",
-    "./output/SD_Img2Img/full_dataset/VAE_MSE_TARGET_OPT",
-    "./output/InstructionPix2Pix/full_dataset/VAE_MSE_TARGET_OPT",
+        "./output/SD_Inpainting/full_dataset/Stage 2",
+    "./output/SD_Img2Img/full_dataset/Stage 2",
+    "./output/InstructionPix2Pix/full_dataset/Stage 2",
 
 
 
@@ -258,7 +250,7 @@ def build_global_summary_csv(entries):
         'pessimistic_miou_edited': 'mIoU Pessim. Edit',
     })
  
-    output_file = 'metriche_variazione_target.csv'
+    output_file = 'metriche_stage1_vs_stage2.csv'
     df.to_csv(output_file, index=False)
     print(f"✓ Esportato: {output_file} ({len(df)} righe)")
  
