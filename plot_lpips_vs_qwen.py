@@ -33,21 +33,25 @@ import re
 # ============================================================================
 # Modifica questa lista aggiungendo i percorsi ai tuoi file
 DATA_FILES = [
-    'output/SD_Inpainting/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt',
-    'output/SD_Inpainting/full_dataset/VAE_MSE_BLACK/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/VAE_MSE_BLACK/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/VAE_MSE_BLACK/global_summary.txt',
-    'output/SD_Inpainting/full_dataset/VAE_MSE_WHITE/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/VAE_MSE_WHITE/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/VAE_MSE_WHITE/global_summary.txt',
-    'output/SD_Inpainting/full_dataset/VAE_MSE_MEAN/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/VAE_MSE_MEAN/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/VAE_MSE_MEAN/global_summary.txt',
-      'output/SD_Inpainting/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt',
+    'output/SD_Inpainting/full_dataset/MagicBrush_photoguard/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/MagicBrush_photoguard/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/MagicBrush_photoguard/global_summary.txt',
+
+    'output/SD_Inpainting/full_dataset/MagicBrush_gray_FT/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/MagicBrush_gray_FT/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/MagicBrush_gray_FT/global_summary.txt',
+
+    'output/SD_Inpainting/full_dataset/MagicBrush_gray_NOISE_ALL/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/MagicBrush_gray_NOISE_ALL/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/MagicBrush_gray_NOISE_ALL/global_summary.txt',
+
+    'output/SD_Inpainting/full_dataset/MagicBrush_target_opt/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/MagicBrush_target_opt/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/MagicBrush_target_opt/global_summary.txt',
+
+    'output/SD_Inpainting/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL/global_summary.txt',
 ]
 
 
@@ -59,11 +63,11 @@ DATA_FILES = [
 # metodo non compare qui, viene mostrato il nome grezzo così com'è
 # (fallback automatico, nessun errore se dimentichi una voce).
 METHOD_LABELS: Dict[str, str] = {
-    'VAE_MSE_FT_2_STAGE': 'Gray',
-    'VAE_MSE_BLACK': 'Black',
-    'VAE_MSE_WHITE': 'White',
-    'VAE_MSE_MEAN': 'Mean',
-    'VAE_MSE_TARGET_OPT': 'Opt.',
+    'MagicBrush_gray_FT': 'Ours (target Gray, noise Mask)',
+    'MagicBrush_gray_NOISE_ALL': 'Ours (target Gray, noise All)',
+    'MagicBrush_photoguard': 'PhotoGuard',
+    'MagicBrush_TARGET_OPT_NOISE_ALL': 'Ours (target Opt., noise All)',
+    'MagicBrush_target_opt': 'Ours (target Opt., noise Mask)',
 }
 
 

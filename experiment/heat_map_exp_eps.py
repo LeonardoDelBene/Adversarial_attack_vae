@@ -6,11 +6,11 @@ import pandas as pd
 
 # Inserisci qui i percorsi ai file sweep_eps.csv che vuoi usare.
 CSV_PATHS = [
-    "./eps_8/sweep_eps.csv", #8
-    "./eps_16/sweep_eps.csv", #16
-    "./eps_32/sweep_eps.csv", #32
-    "./vae_mse/sweep_eps.csv", #64
-    "./eps_128/sweep_eps.csv", #128
+    #"./eps_8/sweep_eps.csv", #8
+    #"./eps_16/sweep_eps.csv", #16
+    #"./eps_32/sweep_eps.csv", #32
+    #"./vae_mse/sweep_eps.csv", #64
+    #"./eps_128/sweep_eps.csv", #128
 ]
 
 # Inserisci qui i nomi delle righe che vuoi usare nel CSV / heatmap.

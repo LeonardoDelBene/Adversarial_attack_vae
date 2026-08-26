@@ -19,28 +19,32 @@ FACTOR_KEYS = [
     "total_implausibility",
 ]
 
-# Aggiungi qui le directory delle run che vuoi confrontare.
-# Ogni directory deve contenere global_summary.txt.
-BASE_DIRS = [
-    #Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/DiffVax"),
-    #Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/VAE_MSE"),
-    #Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/VAE_MSE_FT"),
-    #Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/VAE_MSE_FT_2_STAGE"),
+# Modelli di editing su cui generare un radar chart dedicato, più uno medio.
+# La chiave è il nome della cartella usata nel path, il valore è il titolo
+# da mostrare nel grafico.
+EDITING_MODELS = {
+    "SD_Inpainting": "SD Inpainting",
+    "SD_Img2Img": "SD Img2Img",
+    "InstructionPix2Pix": "InstructionPix2Pix",
+}
 
-    Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/DiffVax"),
-    Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/VAE_MSE"),
-    Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/VAE_MSE_FT"),
-    Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/VAE_MSE_FT_2_STAGE"),
-    
-    #Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/DiffVax"),
-    #Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/VAE_MSE"),
-    #Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/VAE_MSE_FT"),
-    #Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/VAE_MSE_FT_2_STAGE"),
-    
+BASE_OUTPUT_DIR = Path("/equilibrium/ldelbene/Immunization/output")
+DATASET_SUBPATH = "full_dataset"
+
+# Definisci qui le run da confrontare: ogni voce è (etichetta_legenda, nome_cartella_run).
+# nome_cartella_run è lo stesso per tutti i modelli di editing (cambia solo il modello
+# nel path), l'etichetta invece è quella che vuoi vedere in legenda ed è scelta da te.
+RUNS = [
+    ("DiffVax", "DiffVax"),
+    ("PhotoGuard", "PhotoGuard"),
+    ("Ours (target Gray, noise Mask)", "VAE_MSE_FT_2_STAGE"),
+    ("Ours (target Gray, noise All)", "VAE_MSE_FT_2_STAGE_NOSIE_ALL"),
+    ("Ours (target Opt, noise Mask)", "VAE_MSE_TARGET_OPT"),
+    ("Ours (target Opt, noise All)", "VAE_MSE_TARGET_OPT_NOISE_ALL"),
 ]
 
-OUTPUT_PATH = Path("sd_Img2Img_qwen_radar.png")
-
+OUTPUT_DIR = Path(".")
+OUTPUT_PREFIX = "radar_chart_diffvax"
 
 
 def parse_global_summary(summary_path: Path):
@@ -73,10 +77,15 @@ def parse_global_summary(summary_path: Path):
     return [values[key] for key in FACTOR_KEYS]
 
 
-def prepare_runs(paths):
+def build_run_path(editing_model_dir: str, run_dir_name: str) -> Path:
+    return BASE_OUTPUT_DIR / editing_model_dir / DATASET_SUBPATH / run_dir_name
+
+
+def prepare_runs_for_model(editing_model_dir: str):
+    """Ritorna una lista di (etichetta, values) per il modello di editing dato."""
     runs = []
-    for path in paths:
-        base_dir = Path(path)
+    for label, run_dir_name in RUNS:
+        base_dir = build_run_path(editing_model_dir, run_dir_name)
         if not base_dir.exists() or not base_dir.is_dir():
             raise FileNotFoundError(f"Directory not found: {base_dir}")
         summary_path = base_dir / "global_summary.txt"
@@ -84,11 +93,11 @@ def prepare_runs(paths):
             raise FileNotFoundError(f"Missing global_summary.txt in {base_dir}")
 
         values = parse_global_summary(summary_path)
-        runs.append((base_dir.name, values))
+        runs.append((label, values))
     return runs
 
 
-def plot_radar(runs, output_path: Path):
+def plot_radar(runs, title: str, output_path: Path):
     labels = FACTOR_KEYS
     num_vars = len(labels)
 
@@ -97,9 +106,9 @@ def plot_radar(runs, output_path: Path):
 
     fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(polar=True))
 
-    for run_name, values in runs:
+    for label, values in runs:
         values = values + values[:1]
-        ax.plot(angles, values, label=run_name, linewidth=2)
+        ax.plot(angles, values, label=label, linewidth=2)
         ax.fill(angles, values, alpha=0.25)
 
     ax.set_theta_offset(np.pi / 2)
@@ -112,20 +121,60 @@ def plot_radar(runs, output_path: Path):
     ax.yaxis.grid(True, color="gray", linestyle="--", linewidth=0.5)
     ax.xaxis.grid(True, color="gray", linestyle="--", linewidth=0.5)
 
-    ax.set_title("Qwen Attack Average Factor Scores", va="bottom", fontsize=16)
+    ax.set_title(title, va="bottom", fontsize=16)
     ax.legend(loc="upper right", bbox_to_anchor=(1.2, 1.1))
 
     plt.tight_layout()
     fig.savefig(output_path, dpi=300)
-    plt.show()
+    plt.close(fig)
+
+
+def average_runs(per_model_runs):
+    """
+    per_model_runs: dict {editing_model_dir: [(label, values), ...]}
+    Ritorna [(label, values_medi), ...] mediando, per ciascuna label,
+    i valori sui modelli di editing.
+    """
+    labels = [label for label, _ in RUNS]
+    averaged = []
+    for label in labels:
+        stacked = np.array(
+            [
+                dict(per_model_runs[model_dir])[label]
+                for model_dir in EDITING_MODELS
+            ]
+        )
+        mean_values = stacked.mean(axis=0).tolist()
+        averaged.append((label, mean_values))
+    return averaged
 
 
 def main():
-    if not BASE_DIRS:
-        raise ValueError("BASE_DIRS is empty. Definisci le directory da processare direttamente nel codice.")
+    if not RUNS:
+        raise ValueError("RUNS è vuoto. Definisci le run da confrontare direttamente nel codice.")
 
-    runs = prepare_runs(BASE_DIRS)
-    plot_radar(runs, OUTPUT_PATH)
+    per_model_runs = {}
+
+    for editing_model_dir, editing_model_title in EDITING_MODELS.items():
+        runs = prepare_runs_for_model(editing_model_dir)
+        per_model_runs[editing_model_dir] = runs
+
+        output_path = OUTPUT_DIR / f"{OUTPUT_PREFIX}_{editing_model_dir.lower()}.png"
+        plot_radar(
+            runs,
+            title=f"Qwen Attack Average Factor Scores — {editing_model_title}",
+            output_path=output_path,
+        )
+        print(f"Salvato: {output_path}")
+
+    averaged_runs = average_runs(per_model_runs)
+    output_path = OUTPUT_DIR / f"{OUTPUT_PREFIX}_mean.png"
+    plot_radar(
+        averaged_runs,
+        title="Qwen Attack Average Factor Scores — Media sui 3 modelli di editing",
+        output_path=output_path,
+    )
+    print(f"Salvato: {output_path}")
 
 
 if __name__ == "__main__":
