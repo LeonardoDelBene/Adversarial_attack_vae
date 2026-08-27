@@ -9,6 +9,16 @@ generata e salvata su disco* prima di darla in pasto al modello di
 editing target, poi confrontare gli output con le metriche esistenti
 (PSNR, SSIM, FSIM, masked LPIPS, Qwen judge) rispetto all'editing pulito.
 
+Per ciascuna trasformazione/intensità viene ora eseguito anche un
+secondo branch parallelo sull'immagine ORIGINALE (non immunizzata):
+la trasformazione viene applicata a `original_image.png`, il risultato
+viene editato dal modello target e i risultati (immagine trasformata,
+immagine editata, metriche) vengono salvati separatamente. Questo
+branch serve come baseline per capire quanto degrado sia dovuto alla
+trasformazione + re-editing di per sé, indipendentemente
+dall'immunizzazione. I due branch sono distinti nei record tramite il
+campo "source" ("immunized" oppure "original").
+
 Struttura attesa su disco (per ciascuna root_dir):
 
     root_dir/
@@ -102,7 +112,7 @@ def identity(img: Image.Image, intensity: Any = None, *args, **kwargs) -> Image.
 
 TRANSFORMS: dict[str, tuple[Callable[..., Image.Image], list]] = {
     "clean": (identity, [None]),
-    "jpeg": (jpeg_compress, [85, 60, 50]),
+    "jpeg": (jpeg_compress, [85, 60, 30]),
     "crop_center": (center_crop_resize, [0.9, 0.75, 0.5]),
     "crop_random": (random_crop_resize, [0.9, 0.75, 0.5]),
     "blur": (gaussian_blur, [0.5, 1.0, 2.0, 4.0]),
@@ -321,6 +331,12 @@ class RobustnessConfig:
     output_dir: Path = Path("robustness_results")
     mask: Optional[torch.Tensor] = None
     save_images: bool = True
+    # Se True (default), oltre al branch sull'immagine immunizzata viene
+    # eseguito anche un branch sull'immagine originale: la trasformazione
+    # viene applicata a original_image.png, il risultato viene editato e
+    # i risultati (input trasformato, edit, metriche) vengono salvati
+    # separatamente, con "source"="original" nei record.
+    evaluate_original_branch: bool = True
 
     def __post_init__(self):
         if isinstance(self.root_dirs, (str, Path)):
@@ -365,6 +381,79 @@ def _infer_model_output_subdir(root_dir: Path) -> str:
     return "unknown_model"
 
 
+def _process_variant(
+    *,
+    source_pil: Image.Image,
+    source_label: str,
+    t_name: str,
+    t_fn: Callable,
+    intensity: Any,
+    rng: np.random.Generator,
+    sample: "ImgFolderSample",
+    edit_fn: Callable,
+    metrics_fn: Callable,
+    sample_out_dir: Path,
+    root_dir: Path,
+    config: "RobustnessConfig",
+) -> Optional[dict]:
+    """Applica la trasformazione (t_name, intensity) a `source_pil`, edita
+    il risultato con `edit_fn`, salva le immagini su disco (se richiesto)
+    e calcola le metriche rispetto a `sample.edited_original_pil`.
+    Ritorna il record del risultato, oppure None se il calcolo delle
+    metriche fallisce.
+
+    `source_label` distingue il branch ("immunized" oppure "original") e
+    viene usato sia per il campo "source" nel record sia per generare nomi
+    di file distinti su disco.
+    """
+    # 1. Applicazione della trasformazione/degradazione
+    if t_name == "crop_random":
+        transformed_pil = t_fn(source_pil, intensity, rng)
+    elif t_name == "clean":
+        transformed_pil = t_fn(source_pil)
+    else:
+        transformed_pil = t_fn(source_pil, intensity)
+
+    # 2. Re-editing dell'immagine trasformata mediante il modello target
+    transformed_edit = edit_fn(transformed_pil, sample.mask_pil, sample.prompt)
+
+    # 3. Salvataggio immagini trasformate ed editate su disco
+    tag = f"{t_name}_{intensity}" if intensity is not None else t_name
+    suffix = "" if source_label == "immunized" else f"_{source_label}"
+
+    input_path = sample_out_dir / f"{tag}_input{suffix}.png"
+    edited_path = sample_out_dir / f"{tag}_edited{suffix}.png"
+
+    if config.save_images:
+        transformed_pil.save(input_path)
+        if isinstance(transformed_edit, Image.Image):
+            transformed_edit.save(edited_path)
+
+    # 4. Calcolo delle metriche di confronto (sempre rispetto all'edit
+    #    "pulito" dell'originale, per entrambi i branch)
+    try:
+        metrics = metrics_fn(
+            adversarial=transformed_edit,
+            reference=sample.edited_original_pil,
+            mask=sample.mask_pil,
+            editing_prompt=sample.prompt,
+        )
+    except Exception as exc:
+        print(f"[error] metriche per {sample.folder.name} ({source_label}) trasformazione {t_name} intensita {intensity}: {exc}")
+        return None
+
+    return {
+        "root_dir": str(root_dir),
+        "sample_id": sample.sample_id,
+        "source": source_label,
+        "transform": t_name,
+        "intensity": intensity,
+        "saved_input_path": str(input_path) if config.save_images else None,
+        "saved_edited_path": str(edited_path) if config.save_images else None,
+        **metrics,
+    }
+
+
 def _run_single_root(
     root_dir: Path,
     edit_fn: Callable,
@@ -406,49 +495,42 @@ def _run_single_root(
 
         for t_name, (t_fn, intensities) in config.transforms.items():
             for intensity in intensities:
-                # 1. Applicazione della trasformazione/degradazione
-                if t_name == "crop_random":
-                    transformed_pil = t_fn(sample.immunized_pil, intensity, rng)
-                elif t_name == "clean":
-                    transformed_pil = t_fn(sample.immunized_pil)
-                else:
-                    transformed_pil = t_fn(sample.immunized_pil, intensity)
+                # Branch principale: trasformazione + editing sull'immagine immunizzata
+                record = _process_variant(
+                    source_pil=sample.immunized_pil,
+                    source_label="immunized",
+                    t_name=t_name,
+                    t_fn=t_fn,
+                    intensity=intensity,
+                    rng=rng,
+                    sample=sample,
+                    edit_fn=edit_fn,
+                    metrics_fn=metrics_fn,
+                    sample_out_dir=sample_out_dir,
+                    root_dir=root_dir,
+                    config=config,
+                )
+                if record is not None:
+                    records.append(record)
 
-                # 2. Re-editing dell'immagine trasformata mediante il modello target
-                transformed_edit = edit_fn(transformed_pil, sample.mask_pil, sample.prompt)
-
-                # 3. Salvataggio immagini trasformate ed editate su disco
-                tag = f"{t_name}_{intensity}" if intensity is not None else t_name
-
-                input_path = sample_out_dir / f"{tag}_input.png"
-                edited_path = sample_out_dir / f"{tag}_edited.png"
-
-                if config.save_images:
-                    transformed_pil.save(input_path)
-                    if isinstance(transformed_edit, Image.Image):
-                        transformed_edit.save(edited_path)
-
-                # 4. Calcolo delle metriche di confronto
-                try:
-                    metrics = metrics_fn(
-                        adversarial=transformed_edit,
-                        reference=sample.edited_original_pil,
-                        mask=sample.mask_pil,
-                        editing_prompt=sample.prompt,
+                # Branch baseline: stessa trasformazione + editing sull'immagine originale
+                if config.evaluate_original_branch:
+                    record_orig = _process_variant(
+                        source_pil=sample.original_pil,
+                        source_label="original",
+                        t_name=t_name,
+                        t_fn=t_fn,
+                        intensity=intensity,
+                        rng=rng,
+                        sample=sample,
+                        edit_fn=edit_fn,
+                        metrics_fn=metrics_fn,
+                        sample_out_dir=sample_out_dir,
+                        root_dir=root_dir,
+                        config=config,
                     )
-                except Exception as exc:
-                    print(f"[error] metriche per {folder.name} trasformazione {t_name} intensita {intensity}: {exc}")
-                    continue
-
-                records.append({
-                    "root_dir": str(root_dir),
-                    "sample_id": sample.sample_id,
-                    "transform": t_name,
-                    "intensity": intensity,
-                    "saved_input_path": str(input_path) if config.save_images else None,
-                    "saved_edited_path": str(edited_path) if config.save_images else None,
-                    **metrics,
-                })
+                    if record_orig is not None:
+                        records.append(record_orig)
 
         _save_checkpoint(records, sample_out_base / "records.json")
 
@@ -471,6 +553,11 @@ def evaluate_robustness(
     e summary (nessun file aggregato viene salvato). `<tipo_modello>`
     (es. 'SD_Inpainting', 'SD_Img2Img', 'InstructPix2Pix') viene dedotto
     automaticamente dal path della root_dir, vedi MODEL_TYPE_KEYWORDS.
+
+    Per ciascuna combinazione trasformazione/intensità viene eseguito un
+    branch sull'immagine immunizzata ("source"="immunized") e, se
+    `config.evaluate_original_branch` è True (default), anche un branch
+    sull'immagine originale ("source"="original"), usato come baseline.
 
     `edit_target` può essere:
     - un singolo modello/callable di editing, usato per tutte le root_dir
@@ -531,30 +618,30 @@ def evaluate_robustness(
 # ---------------------------------------------------------------------------
 
 def _save_summary(records: list[dict], output_dir: Path) -> None:
-    """Calcola la media di ciascuna metrica per ogni combinazione (transform, intensity)
-
-    e salva i risultati sia in formato JSON che TXT.
+    """Calcola la media di ciascuna metrica per ogni combinazione
+    (transform, intensity, source) e salva i risultati sia in formato
+    JSON che TXT.
     """
     if not records:
         print(f"[warning] Nessun record trovato per calcolare le medie in {output_dir}.")
         return
 
-    # Struttura: metrics_accum[(transform, intensity)][metric_key] = [val1, val2, ...]
+    # Struttura: metrics_accum[(transform, intensity, source)][metric_key] = [val1, val2, ...]
     metrics_accum = defaultdict(lambda: defaultdict(list))
 
     # Chiavi non numeriche da ignorare nel calcolo della media
-    ignore_keys = {"root_dir", "sample_id", "transform", "intensity", "saved_input_path", "saved_edited_path"}
+    ignore_keys = {"root_dir", "sample_id", "source", "transform", "intensity", "saved_input_path", "saved_edited_path"}
 
     for r in records:
-        key = (r["transform"], str(r["intensity"]))
+        key = (r["transform"], str(r["intensity"]), r.get("source", "immunized"))
         for k, v in r.items():
             if k not in ignore_keys and isinstance(v, (int, float, np.number)):
                 metrics_accum[key][k].append(float(v))
 
     summary_dict = {}
 
-    for (t_name, intensity), metrics in metrics_accum.items():
-        comb_key = f"{t_name}@{intensity}"
+    for (t_name, intensity, source), metrics in metrics_accum.items():
+        comb_key = f"{t_name}@{intensity}@{source}"
         summary_dict[comb_key] = {}
         for m_key, vals in metrics.items():
             summary_dict[comb_key][m_key] = float(np.mean(vals)) if vals else 0.0
@@ -582,13 +669,24 @@ def _save_checkpoint(records: list[dict], path: Path) -> None:
         json.dump(records, f, indent=2, default=str)
 
 
-def summarize(records: list[dict], metric_key: str = "masked_lpips") -> dict:
-    groups: dict[tuple[str, Any], list[float]] = defaultdict(list)
-    for r in records:
-        if metric_key in r:
-            groups[(r["transform"], r["intensity"])].append(float(r[metric_key]))
+def summarize(records: list[dict], metric_key: str = "masked_lpips", source: Optional[str] = "immunized") -> dict:
+    """Riepiloga `metric_key` per (transform, intensity).
 
-    return {f"{t}@{i}": float(np.mean(vals)) for (t, i), vals in groups.items() if vals}
+    Se `source` è specificato (default "immunized"), filtra i record per
+    quel branch; passare `source=None` per includere entrambi i branch
+    insieme (in tal caso il branch viene incluso nella chiave del risultato).
+    """
+    groups: dict[tuple, list[float]] = defaultdict(list)
+    for r in records:
+        if metric_key not in r:
+            continue
+        r_source = r.get("source", "immunized")
+        if source is not None and r_source != source:
+            continue
+        key = (r["transform"], r["intensity"]) if source is not None else (r["transform"], r["intensity"], r_source)
+        groups[key].append(float(r[metric_key]))
+
+    return {"@".join(str(part) for part in key): float(np.mean(vals)) for key, vals in groups.items() if vals}
 
 
 class CombinedMetrics:
@@ -624,6 +722,9 @@ class CombinedMetrics:
 if __name__ == "__main__":
     cfg = RobustnessConfig(
         root_dirs=[
+            Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/VAE_MSE_FT_2_STAGE"),
+            Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/VAE_MSE_FT_2_STAGE"),
+            Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/VAE_MSE_FT_2_STAGE"),
            
             Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/VAE_MSE_TARGET_OPT"),
             Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/VAE_MSE_TARGET_OPT"),
@@ -654,6 +755,9 @@ if __name__ == "__main__":
         # modello (SD_Inpainting / SD_Img2Img / InstructPix2Pix) viene
         # dedotta automaticamente dal path di ciascuna root_dir.
         output_dir=Path("robustness_results"),
+        # Esegue anche il branch di baseline sull'immagine originale
+        # (trasformazione + editing + salvataggio + metriche).
+        evaluate_original_branch=True,
     )
 
     # Inizializzazione modelli di attacco/editing e metriche
@@ -683,11 +787,17 @@ if __name__ == "__main__":
     records = evaluate_robustness(edit_targets, combined_metrics, cfg)
 
     # Riepilogo per la metrica di segmentazione (es. pessimistic_iou o optimistic_iou)
+    # Di default sul branch "immunized"; passare source="original" o
+    # source=None (entrambi insieme) per gli altri riepiloghi.
     summary_seg = summarize(records, metric_key="pessimistic_iou")
     summary_qwen = summarize(records, metric_key="qwen_score")
+    summary_seg_original = summarize(records, metric_key="pessimistic_iou", source="original")
 
-    print("=== Summary Pessimistic mIoU (tutte le root_dir) ===")
+    print("=== Summary Pessimistic mIoU (immunized, tutte le root_dir) ===")
     print(json.dumps(summary_seg, indent=2))
 
-    print("\n=== Summary Qwen Score (tutte le root_dir) ===")
+    print("\n=== Summary Qwen Score (immunized, tutte le root_dir) ===")
     print(json.dumps(summary_qwen, indent=2))
+
+    print("\n=== Summary Pessimistic mIoU (original baseline, tutte le root_dir) ===")
+    print(json.dumps(summary_seg_original, indent=2))

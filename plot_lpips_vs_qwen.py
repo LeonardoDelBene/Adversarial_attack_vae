@@ -33,25 +33,25 @@ import re
 # ============================================================================
 # Modifica questa lista aggiungendo i percorsi ai tuoi file
 DATA_FILES = [
-    'output/SD_Inpainting/full_dataset/MagicBrush_photoguard/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/MagicBrush_photoguard/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/MagicBrush_photoguard/global_summary.txt',
+    'output/SD_Inpainting/full_dataset/TedBench_diff_noise_all/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/TedBench_diff_noise_all/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/TedBench_diff_noise_all/global_summary.txt',
 
-    'output/SD_Inpainting/full_dataset/MagicBrush_gray_FT/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/MagicBrush_gray_FT/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/MagicBrush_gray_FT/global_summary.txt',
+    'output/SD_Inpainting/full_dataset/TedBench_diff_noise_mask_invert/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/TedBench_diff_noise_mask_invert/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/TedBench_diff_noise_mask_invert/global_summary.txt',
 
-    'output/SD_Inpainting/full_dataset/MagicBrush_gray_NOISE_ALL/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/MagicBrush_gray_NOISE_ALL/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/MagicBrush_gray_NOISE_ALL/global_summary.txt',
+    'output/SD_Inpainting/full_dataset/TedBench_magic_noise_all/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/TedBench_magic_noise_all/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/TedBench_magic_noise_all/global_summary.txt',
 
-    'output/SD_Inpainting/full_dataset/MagicBrush_target_opt/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/MagicBrush_target_opt/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/MagicBrush_target_opt/global_summary.txt',
+    'output/SD_Inpainting/full_dataset/TedBench_magic_noise_mask/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/TedBench_magic_noise_mask/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/TedBench_magic_noise_mask/global_summary.txt',
 
-    'output/SD_Inpainting/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL/global_summary.txt',
+    'output/SD_Inpainting/full_dataset/TedBench_photoguard/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/TedBench_photoguard/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/TedBench_photoguard/global_summary.txt',
 ]
 
 
@@ -63,11 +63,11 @@ DATA_FILES = [
 # metodo non compare qui, viene mostrato il nome grezzo così com'è
 # (fallback automatico, nessun errore se dimentichi una voce).
 METHOD_LABELS: Dict[str, str] = {
-    'MagicBrush_gray_FT': 'Ours (target Gray, noise Mask)',
-    'MagicBrush_gray_NOISE_ALL': 'Ours (target Gray, noise All)',
-    'MagicBrush_photoguard': 'PhotoGuard',
-    'MagicBrush_TARGET_OPT_NOISE_ALL': 'Ours (target Opt., noise All)',
-    'MagicBrush_target_opt': 'Ours (target Opt., noise Mask)',
+    'TedBench_diff_noise_mask_invert': 'Ours (train DiffVax, noise Mask)',
+    'TedBench_diff_noise_all': 'Ours (train DiffVax, noise All)',
+    'TedBench_photoguard': 'PhotoGuard',
+    'TedBench_magic_noise_all': 'Ours (train MagicBrush, noise All)',
+    'TedBench_magic_noise_mask': 'Ours (train MagicBrush, noise Mask)',
 }
 
 

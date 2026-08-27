@@ -5,25 +5,25 @@ from pathlib import Path
 # Imposta qui le directory del full_dataset contenenti le cartelle img_0, img_1, ..., img_199
 # Ogni directory deve contenere le sottocartelle img_* con i file prompt_and_metrics.txt
 BASE_DIRS = [
-    Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/MagicBrush_photoguard"),
-    Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/MagicBrush_gray_FT"),
-    Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/MagicBrush_gray_NOISE_ALL"),
-    Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/MagicBrush_target_opt"),
-    Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL"),
+    Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/TedBench_diff_noise_all"),
+    Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/TedBench_diff_noise_mask_invert"),
+    Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/TedBench_magic_noise_all"),
+    Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/TedBench_magic_noise_mask"),
+    Path("/equilibrium/ldelbene/Immunization/output/SD_Inpainting/full_dataset/TedBench_photoguard"),
 
 
-    Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/MagicBrush_photoguard"),
-    Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/MagicBrush_gray_FT"),
-    Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/MagicBrush_gray_NOISE_ALL"),
-    Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/MagicBrush_target_opt"),
-    Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL"),
+    Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/TedBench_diff_noise_all"),
+    Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/TedBench_diff_noise_mask_invert"),
+    Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/TedBench_magic_noise_all"),
+    Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/TedBench_magic_noise_mask"),
+    Path("/equilibrium/ldelbene/Immunization/output/SD_Img2Img/full_dataset/TedBench_photoguard"),
 
     
-    Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/MagicBrush_photoguard"),
-    Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/MagicBrush_gray_FT"),
-    Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/MagicBrush_gray_NOISE_ALL"),
-    Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/MagicBrush_target_opt"),
-    Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL"),
+    Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/TedBench_diff_noise_all"),
+    Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/TedBench_diff_noise_mask_invert"),
+    Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/TedBench_magic_noise_all"),
+    Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/TedBench_magic_noise_mask"),
+    Path("/equilibrium/ldelbene/Immunization/output/InstructionPix2Pix/full_dataset/TedBench_photoguard"),
 
 ]
 

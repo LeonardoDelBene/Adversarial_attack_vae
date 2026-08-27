@@ -35,16 +35,15 @@ DATASET_SUBPATH = "full_dataset"
 # nome_cartella_run è lo stesso per tutti i modelli di editing (cambia solo il modello
 # nel path), l'etichetta invece è quella che vuoi vedere in legenda ed è scelta da te.
 RUNS = [
-    ("DiffVax", "DiffVax"),
-    ("PhotoGuard", "PhotoGuard"),
-    ("Ours (target Gray, noise Mask)", "VAE_MSE_FT_2_STAGE"),
-    ("Ours (target Gray, noise All)", "VAE_MSE_FT_2_STAGE_NOSIE_ALL"),
-    ("Ours (target Opt, noise Mask)", "VAE_MSE_TARGET_OPT"),
-    ("Ours (target Opt, noise All)", "VAE_MSE_TARGET_OPT_NOISE_ALL"),
+    ("PhotoGuard", "TedBench_photoguard"),
+    ("Ours (train DiffVax, noise Mask)", "TedBench_diff_noise_mask_invert"),
+    ("Ours (train Diffvax, noise All)", "TedBench_diff_noise_all"),
+    ("Ours (train MagicBrush, noise Mask)", "TedBench_magic_noise_mask"),
+    ("Ours (train MagicBrush, noise All)", "TedBench_magic_noise_all"),
 ]
 
 OUTPUT_DIR = Path(".")
-OUTPUT_PREFIX = "radar_chart_diffvax"
+OUTPUT_PREFIX = "radar_chart_tedbench"
 
 
 def parse_global_summary(summary_path: Path):
