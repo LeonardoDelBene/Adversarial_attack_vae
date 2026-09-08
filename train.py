@@ -566,6 +566,7 @@ if __name__ == "__main__":
     train_dataset = ImmunizationDataset(dataset= dataset, split="train")
     val_dataset = ImmunizationDataset(dataset= dataset, split="validation")
 
+
     if DEBUG:
         train_dataset = Subset(train_dataset, range(N_DEBUG))
         val_dataset = Subset(val_dataset, range(N_DEBUG))
@@ -615,7 +616,7 @@ if __name__ == "__main__":
         training_checkpoint_dir="checkpoints/training/",
         device=device,
         resume_from_checkpoint=False,
-        resume_only_weights = True,
+        resume_only_weights = False,
         noise_on_mask=False,
         dyn_weight_window= 30,
         dyn_weight_T_temp = 0.1,

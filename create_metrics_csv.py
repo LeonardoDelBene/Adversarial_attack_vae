@@ -13,19 +13,20 @@ import pandas as pd
 # =====================================================================
 ROOTS = [
     
-    "./output/SD_Inpainting/full_dataset/VAE_MSE_FT_2_STAGE",
-    "./output/SD_Img2Img/full_dataset/VAE_MSE_FT_2_STAGE",
-    "./output/InstructionPix2Pix/full_dataset/VAE_MSE_FT_2_STAGE",
+    "./robustness_results/InstructPix2Pix/DiffVax",
+    "./robustness_results/InstructPix2Pix/PhotoGuard",
+    "./robustness_results/InstructPix2Pix/VAE_MSE_FT_2_STAGE",
+    "./robustness_results/InstructPix2Pix/VAE_MSE_TARGET_OPT",
 
-    "./output/SD_Inpainting/full_dataset/VAE_MSE_FT",
-    "./output/SD_Img2Img/full_dataset/VAE_MSE_FT",
-    "./output/InstructionPix2Pix/full_dataset/VAE_MSE_FT",
+    "./robustness_results/SD_Img2Img/DiffVax",
+    "./robustness_results/SD_Img2Img/PhotoGuard",
+    "./robustness_results/SD_Img2Img/VAE_MSE_FT_2_STAGE",
+    "./robustness_results/SD_Img2Img/VAE_MSE_TARGET_OPT",
 
-        "./output/SD_Inpainting/full_dataset/Stage 2",
-    "./output/SD_Img2Img/full_dataset/Stage 2",
-    "./output/InstructionPix2Pix/full_dataset/Stage 2",
-
-
+    "./robustness_results/SD_Inpainting/DiffVax",
+    "./robustness_results/SD_Inpainting/PhotoGuard",
+    "./robustness_results/SD_Inpainting/VAE_MSE_FT_2_STAGE",
+    "./robustness_results/SD_Inpainting/VAE_MSE_TARGET_OPT",
 
 ]
 
@@ -179,15 +180,18 @@ def parse_robustness_json(json_path, exp_name):
     """
     Parsa un file summary.json con struttura del tipo:
     {
-        "clean@None": {"attack_success_score": ..., "optimistic_iou": ..., "pessimistic_iou": ...},
-        "jpeg@85": {...},
+        "clean@None@immunized": {"attack_success_score": ..., "optimistic_iou": ..., "pessimistic_iou": ...},
+        "clean@None@original": {...},
+        "jpeg@85@immunized": {...},
+        "jpeg@85@original": {...},
         ...
     }
-    Restituisce una lista di righe in formato long (una riga per ogni tipo di attacco).
+    Restituisce una lista di righe in formato long (una riga per ogni combinazione
+    attacco/parametro/variante).
     """
     with open(json_path, 'r') as f:
         raw = json.load(f)
- 
+
     rows = []
     for attack_key, metrics in raw.items():
         # Salta eventuali chiavi top-level che non sono dizionari di metriche
@@ -195,22 +199,32 @@ def parse_robustness_json(json_path, exp_name):
         if not isinstance(metrics, dict):
             print(f"  ⚠ Chiave '{attack_key}' ignorata (valore non è un dizionario): {metrics!r}")
             continue
- 
-        if '@' in attack_key:
-            attack_type, attack_param = attack_key.split('@', 1)
+
+        parts = attack_key.split('@')
+        if len(parts) == 3:
+            attack_type, attack_param, variant = parts
+        elif len(parts) == 2:
+            # Retrocompatibilità con il vecchio formato "attack_type@param" senza variante
+            attack_type, attack_param = parts
+            variant = None
         else:
-            attack_type, attack_param = attack_key, None
- 
+            attack_type, attack_param, variant = parts[0], None, None
+
+        # "None" come stringa letterale viene normalizzato al valore None
+        if attack_param == 'None':
+            attack_param = None
+
         rows.append({
             'Esperimento': exp_name,
             'attack_key': attack_key,
             'attack_type': attack_type,
             'attack_param': attack_param,
+            'variant': variant,
             'attack_success_score': metrics.get('attack_success_score'),
             'optimistic_iou': metrics.get('optimistic_iou'),
             'pessimistic_iou': metrics.get('pessimistic_iou'),
         })
- 
+
     return rows
  
  
@@ -258,32 +272,33 @@ def build_global_summary_csv(entries):
 def build_robustness_csv(entries):
     """entries: lista di (exp_name, summary_json_path) per cui il file esiste."""
     print(f"\n--- summary.json trovati: {len(entries)} ---")
- 
+
     all_rows = []
     for exp_name, path in entries:
         all_rows.extend(parse_robustness_json(path, exp_name))
         print(f"✓ Caricato: {path}")
- 
+
     df = pd.DataFrame(all_rows)
- 
+
     numeric_cols = ['attack_success_score', 'optimistic_iou', 'pessimistic_iou']
     for col in numeric_cols:
         df[col] = df[col].apply(lambda x: f'{x:.4f}' if pd.notna(x) else '-')
- 
+
     df_renamed = df.rename(columns={
         'attack_key': 'Attacco',
         'attack_type': 'Tipo Attacco',
         'attack_param': 'Parametro',
+        'variant': 'Variante',
         'attack_success_score': 'Punteggio Successo Attacco',
         'optimistic_iou': 'IoU Ottimistico',
         'pessimistic_iou': 'IoU Pessimistico',
     })
- 
-    output_file = 'metriche_robustness.csv'
+
+    output_file = 'metriche_robustness_diffvax.csv'
     df_renamed.to_csv(output_file, index=False)
     print(f"✓ Esportato: {output_file} ({len(df_renamed)} righe)")
- 
-    # Versione wide: una riga per esperimento, colonne per ogni combinazione attacco/metrica
+
+    # Versione wide: una riga per esperimento, colonne per ogni combinazione attacco/variante/metrica
     df_wide = df.pivot_table(
         index='Esperimento',
         columns='attack_key',
@@ -292,11 +307,10 @@ def build_robustness_csv(entries):
     )
     df_wide.columns = [f'{metric}__{attack}' for metric, attack in df_wide.columns]
     df_wide = df_wide.reset_index()
- 
-    output_file_wide = 'metriche_robustness_wide.csv'
+
+    output_file_wide = 'metriche_robustness_wide_diffvax.csv'
     df_wide.to_csv(output_file_wide, index=False)
     print(f"✓ Esportato: {output_file_wide} ({len(df_wide)} righe)")
- 
  
 def main():
     print(f"Cercando dati in {len(ROOTS)} cartelle root...")
