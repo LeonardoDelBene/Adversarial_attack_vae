@@ -380,7 +380,7 @@ def plot_dataset_on_axis(
     xtick_labels = [f"{display_name(m)}\n({lpips_by_method[m]:.3f})" for m in methods]
     ax.set_xticks(x)
     ax.set_xticklabels(xtick_labels, rotation=25, ha='right', fontsize=9)
-    ax.set_xlabel('Configuration (Subject LPIPS)', fontsize=11, fontweight='bold')
+    ax.set_xlabel('Configuration (Mask LPIPS)', fontsize=11, fontweight='bold')
     ax.set_ylabel(y_label, fontsize=11, fontweight='bold')
     ax.set_title(title, fontsize=13, fontweight='bold')
     ax.grid(True, axis='y', alpha=0.3, linestyle='--')
@@ -471,7 +471,7 @@ def main():
         DATASETS,
         y_column='attack_success_rate',
         y_label='Attack Success Rate',
-        suptitle='Subject LPIPS vs Attack Success Rate',
+        suptitle='Attack Success Rate vs Mask LPIPS',
         output_path="lpips_vs_attack_success_rate_combined.png",
     )
 
