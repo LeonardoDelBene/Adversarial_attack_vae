@@ -1,38 +1,98 @@
 """
-Script per creare due grafici a barre che mettono in relazione, per ogni
-METODO (VAE_MSE, VAE_MSE_FT, VAE_MSE_FT_2_STAGE, DiffVax, ...), le tre
-PIPELINE (SD_Inpainting, SD_Img2Img, InstructionPix2Pix) rispetto a:
-    1) lo score medio di attack success (1-7) di Qwen
+Script per creare un'unica figura composta da 3 grafici a barre affiancati
+(uno per dataset: DiffVax, MagicBrush, TedBench), che mettono in relazione,
+per ogni METODO (VAE_MSE, VAE_MSE_FT, VAE_MSE_FT_2_STAGE, DiffVax, ...), le
+tre PIPELINE (SD_Inpainting, SD_Img2Img, InstructionPix2Pix) rispetto a:
+    1) lo score medio di attack success (1-7) di Qwen, oppure
     2) l'attack success rate (frazione di campioni con score >= soglia)
 
 Per ogni metodo (configurazione) vengono disegnate 4 barre affiancate:
     - 3 barre, una per pipeline, con sfumature diverse dello stesso
       colore base del metodo (SD_Inpainting = chiaro, SD_Img2Img =
       intermedio, InstructionPix2Pix = scuro)
-    - 1 barra aggiuntiva "Media", con il colore pieno (non sfumato) del
+    - 1 barra aggiuntiva "Average", con il colore pieno (non sfumato) del
       metodo e un hatch per distinguerla a colpo d'occhio dalle altre tre
 
 L'asse x mostra il Subject LPIPS (Original vs Immunized) di ciascun
-metodo, e i gruppi di barre sono ordinati in base a questo valore.
+metodo (nome per esteso incluso nell'etichetta), quindi non serve una
+legenda "Configuration" separata: l'unica legenda condivisa da tutta la
+figura è quella "Task / Aggregate" (pipeline + Average), identica per
+tutti e 3 i sottografici.
+
+Tutti i testi disegnati nel grafico (titoli, assi, legenda) sono in
+inglese.
 """
 
-import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-from matplotlib.patches import Patch
-import colorsys
-import numpy as np
-from pathlib import Path
-from typing import List, Tuple, Dict
-import sys
 import re
+import sys
+from pathlib import Path
+from typing import Dict, List
+
+import colorsys
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from matplotlib.patches import Patch
 
 
 # ============================================================================
-# CONFIGURAZIONE: Lista dei percorsi ai file global_summary.txt (o CSV)
+# CONFIGURAZIONE: un set di file (global_summary.txt) per ciascun dataset.
 # ============================================================================
-# Modifica questa lista aggiungendo i percorsi ai tuoi file
-DATA_FILES = [
+# Modifica i tre elenchi sottostanti con i percorsi corretti per il tuo
+# ambiente. Ogni dataset diventa un sottografico della figura finale,
+# nell'ordine in cui compare in DATASETS (vedi piu' in basso).
+DIFFVAX_FILES: List[str] = [
+    'output/SD_Inpainting/full_dataset/DiffVax/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/DiffVax/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/DiffVax/global_summary.txt',
+
+    'output/SD_Inpainting/full_dataset/PhotoGuard/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/PhotoGuard/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/PhotoGuard/global_summary.txt',
+
+    'output/SD_Inpainting/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt',
+        'output/SD_Img2Img/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt',
+        'output/InstructionPix2Pix/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt',
+
+    'output/SD_Inpainting/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt',
+        'output/SD_Img2Img/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt',
+        'output/InstructionPix2Pix/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt',
+
+    'output/SD_Inpainting/full_dataset/VAE_MSE_FT_2_STAGE_NOSIE_ALL/global_summary.txt',
+        'output/SD_Img2Img/full_dataset/VAE_MSE_FT_2_STAGE_NOSIE_ALL/global_summary.txt',
+        'output/InstructionPix2Pix/full_dataset/VAE_MSE_FT_2_STAGE_NOSIE_ALL/global_summary.txt',
+
+    'output/SD_Inpainting/full_dataset/VAE_MSE_TARGET_OPT_NOISE_ALL/global_summary.txt',
+            'output/SD_Img2Img/full_dataset/VAE_MSE_TARGET_OPT_NOISE_ALL/global_summary.txt',
+            'output/InstructionPix2Pix/full_dataset/VAE_MSE_TARGET_OPT_NOISE_ALL/global_summary.txt',
+    
+]
+
+MAGICBRUSH_FILES: List[str] = [
+    'output/SD_Inpainting/full_dataset/MagicBrush_photoguard/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/MagicBrush_photoguard/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/MagicBrush_photoguard/global_summary.txt',
+
+        'output/SD_Inpainting/full_dataset/MagicBrush_target_opt/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/MagicBrush_target_opt/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/MagicBrush_target_opt/global_summary.txt',
+
+        'output/SD_Inpainting/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL/global_summary.txt',
+
+        'output/SD_Inpainting/full_dataset/MagicBrush_gray_FT/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/MagicBrush_gray_FT/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/MagicBrush_gray_FT/global_summary.txt',
+
+        'output/SD_Inpainting/full_dataset/MagicBrush_gray_NOISE_ALL/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/MagicBrush_gray_NOISE_ALL/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/MagicBrush_gray_NOISE_ALL/global_summary.txt',
+    # ... aggiungi qui i percorsi per il dataset MagicBrush
+]
+
+TEDBENCH_FILES: List[str] = [
     'output/SD_Inpainting/full_dataset/TedBench_diff_noise_all/global_summary.txt',
     'output/SD_Img2Img/full_dataset/TedBench_diff_noise_all/global_summary.txt',
     'output/InstructionPix2Pix/full_dataset/TedBench_diff_noise_all/global_summary.txt',
@@ -54,28 +114,40 @@ DATA_FILES = [
     'output/InstructionPix2Pix/full_dataset/TedBench_photoguard/global_summary.txt',
 ]
 
+# Ordine (e titolo) dei sottografici nella figura finale.
+DATASETS: List[Dict[str, object]] = [
+    {"name": "DiffVax", "files": DIFFVAX_FILES},
+    {"name": "MagicBrush", "files": MAGICBRUSH_FILES},
+    {"name": "TedBench", "files": TEDBENCH_FILES},
+]
+
 
 # ============================================================================
 # NOMI VISUALIZZATI PER LE CONFIGURAZIONI (METODI)
 # ============================================================================
 # Mappa il nome "grezzo" della cartella (es. VAE_MSE_TARGET_OPT) al nome
-# che vuoi vedere nella legenda e nelle etichette del grafico. Se un
-# metodo non compare qui, viene mostrato il nome grezzo così com'è
-# (fallback automatico, nessun errore se dimentichi una voce).
+# che vuoi vedere nelle etichette dell'asse x. Se un metodo non compare
+# qui, viene mostrato il nome grezzo cosi' com'e' (fallback automatico).
 METHOD_LABELS: Dict[str, str] = {
-    'TedBench_diff_noise_mask_invert': 'Ours (train DiffVax, noise Mask)',
-    'TedBench_diff_noise_all': 'Ours (train DiffVax, noise All)',
+    'TedBench_diff_noise_mask_invert': 'Ours [train DiffVax, noise Mask]',
+    'TedBench_diff_noise_all': 'Ours [train DiffVax, noise All]',
     'TedBench_photoguard': 'PhotoGuard',
-    'TedBench_magic_noise_all': 'Ours (train MagicBrush, noise All)',
-    'TedBench_magic_noise_mask': 'Ours (train MagicBrush, noise Mask)',
+    'TedBench_magic_noise_all': 'Ours [train MagicBrush, noise All]',
+    'TedBench_magic_noise_mask': 'Ours [train MagicBrush, noise Mask]',
+    'VAE_MSE_TARGET_OPT_NOISE_ALL': 'Ours [target Opt, noise All]',
+    'VAE_MSE_FT_2_STAGE_NOSIE_ALL': 'Ours  [target Gray, noise All]',
+    'VAE_MSE_TARGET_OPT': 'Ours [target Opt, noise Mask]',
+    'VAE_MSE_FT_2_STAGE': 'Ours [target Gray, noise Mask]',
+    'MagicBrush_gray_NOISE_ALL': 'Ours [target Gray, noise All]',
+    'MagicBrush_gray_FT': 'Ours [target Gray, noise Mask]',
+    'MagicBrush_target_opt': 'Ours [target Opt, noise Mask]',
+    'MagicBrush_TARGET_OPT_NOISE_ALL': 'Ours [target Opt, noise All]',
+    'MagicBrush_photoguard': 'PhotoGuard',
 }
 
 
 def display_name(method: str) -> str:
-    """
-    Restituisce il nome da mostrare in legenda per un dato metodo,
-    usando METHOD_LABELS se presente, altrimenti il nome grezzo.
-    """
+    """Restituisce il nome da mostrare in etichetta per un dato metodo."""
     return METHOD_LABELS.get(method, method)
 
 
@@ -83,54 +155,35 @@ def display_name(method: str) -> str:
 # COLORI BASE DISPONIBILI (uno per ogni METODO, es. VAE_MSE, DiffVax, ...)
 # ============================================================================
 BASE_COLORS = [
-    '#1f77b4',  # blu
-    '#ff7f0e',  # arancione
-    '#2ca02c',  # verde
-    '#d62728',  # rosso
-    '#9467bd',  # viola
-    '#8c564b',  # marrone
-    '#e377c2',  # rosa
-    '#7f7f7f',  # grigio
-    '#bcbd22',  # giallo-verde
-    '#17becf',  # ciano
+    '#1f77b4',  # blue
+    '#ff7f0e',  # orange
+    '#2ca02c',  # green
+    '#d62728',  # red
+    '#9467bd',  # purple
+    '#8c564b',  # brown
+    '#e377c2',  # pink
+    '#7f7f7f',  # gray
+    '#bcbd22',  # olive
+    '#17becf',  # cyan
 ]
 
 # ============================================================================
 # PIPELINE RICONOSCIUTE E LORO LUMINOSITA' RELATIVA
 # ============================================================================
-# Valori di "lightness" (in scala HLS, 0=nero, 1=bianco) usati per
-# generare la sfumatura di ciascuna pipeline a partire dal colore base
-# del metodo. SD_Inpainting = chiaro, SD_Img2Img = intermedio,
-# InstructionPix2Pix = scuro.
 PIPELINE_LIGHTNESS = {
-    'SD_Inpainting': 0.78,        # chiaro
-    'SD_Img2Img': 0.55,           # intermedio (vicino al colore base originale)
-    'InstructionPix2Pix': 0.32,   # scuro
+    'SD_Inpainting': 0.78,        # light
+    'SD_Img2Img': 0.55,           # medium
+    'InstructionPix2Pix': 0.32,   # dark
 }
 
-# Ordine di disegno/legenda delle pipeline (facoltativo, solo estetico)
 PIPELINE_ORDER = ['SD_Inpainting', 'SD_Img2Img', 'InstructionPix2Pix']
 
-# Colore neutro usato solo per costruire la legenda "Task / Aggregato"
-# (le sfumature reali nel grafico restano quelle del metodo)
+# Colore neutro usato solo per costruire la legenda condivisa "Task / Aggregate".
 LEGEND_NEUTRAL_COLOR = '#808080'
 
 
 def shade_color(hex_color: str, lightness: float) -> str:
-    """
-    Genera una variante più chiara/scura di un colore esadecimale,
-    mantenendo hue e saturazione invariati e modificando solo la
-    luminosità (modello HLS). Questo garantisce che tutte le sfumature
-    di un metodo restino nella stessa "famiglia" di colore.
-
-    Args:
-        hex_color: colore base in formato '#rrggbb'
-        lightness: nuova luminosità desiderata, in [0, 1]
-                    (0 = nero, 1 = bianco)
-
-    Returns:
-        Colore esadecimale risultante.
-    """
+    """Genera una variante piu' chiara/scura di un colore esadecimale."""
     r, g, b = mcolors.to_rgb(hex_color)
     h, l, s = colorsys.rgb_to_hls(r, g, b)
     r2, g2, b2 = colorsys.hls_to_rgb(h, lightness, s)
@@ -138,63 +191,22 @@ def shade_color(hex_color: str, lightness: float) -> str:
 
 
 def extract_pipeline_from_path(filepath: str) -> str:
-    """
-    Estrae il nome della pipeline (SD_Inpainting, SD_Img2Img,
-    InstructionPix2Pix, ...) dal percorso del file, cercando una
-    qualsiasi delle chiavi conosciute in PIPELINE_LIGHTNESS tra le
-    componenti del path.
-    """
+    """Estrae il nome della pipeline dal percorso del file."""
     parts = Path(filepath).parts
     for part in parts:
         if part in PIPELINE_LIGHTNESS:
             return part
-    # Fallback: nessuna pipeline conosciuta trovata nel path
     return 'Unknown'
 
 
 def extract_method_from_path(filepath: str) -> str:
-    """
-    Estrae il nome del metodo (es. VAE_MSE, VAE_MSE_FT,
-    VAE_MSE_FT_2_STAGE, DiffVax, ...) dal percorso del file.
-    Per convenzione nello script originale, è il nome della
-    directory che contiene il file (parent immediato).
-    """
+    """Estrae il nome del metodo (directory padre immediata) dal percorso."""
     return Path(filepath).parent.name
 
 
-def read_metrics_from_csv(filepath: str) -> pd.DataFrame:
-    """
-    Legge le metriche da un file CSV nel formato metriche_globali.csv.
-
-    Colonne rilevanti:
-    - name: nome della configurazione
-    - subject_lpips_orig: LPIPS del subject (immagine originale)
-    - subject_lpips_edited: LPIPS del subject (immagine immunizzata)
-    - attack_success_score: score medio di attack success (Qwen)
-    - attack_success_rate (opzionale): frazione di campioni con score >= soglia
-    """
-    df = pd.read_csv(filepath)
-
-    # Calcola la differenza LPIPS tra originale e immunizzata
-    df['lpips_difference'] = df['subject_lpips_edited'] - df['subject_lpips_orig']
-
-    # Rinomina per chiarezza
-    df['qwen_score'] = df['attack_success_score']
-
-    # Se il CSV ha già una colonna 'attack_success_rate', viene mantenuta
-    # com'è; altrimenti la lasciamo assente (verrà gestita più avanti).
-
-    return df
-
-
 def read_metrics_from_global_summary(filepath: str) -> pd.DataFrame:
-    """
-    Legge le metriche da un file global_summary.txt.
-
-    Estrae:
-    - Subject LPIPS dalla sezione "Original vs Immunized LPIPS"
-    - Average attack success score dalla sezione "Qwen Attack Evaluation Summary"
-    """
+    """Legge le metriche (Subject LPIPS, Qwen score, attack success rate)
+    da un file global_summary.txt."""
     data = {
         'lpips_subject': [],
         'qwen_score': [],
@@ -208,11 +220,9 @@ def read_metrics_from_global_summary(filepath: str) -> pd.DataFrame:
         with open(filepath, 'r') as f:
             content = f.read()
 
-        # Estrai Subject LPIPS dalla sezione "Original vs Immunized LPIPS"
         lpips_start = content.find("---- Original vs Immunized LPIPS ----")
         if lpips_start != -1:
             lpips_section = content[lpips_start:lpips_start + 500]
-            # Cerca "Subject LPIPS: X.XXXX"
             lpips_match = re.search(r'Subject LPIPS:\s+([\d.]+)', lpips_section)
             if lpips_match:
                 lpips_value = float(lpips_match.group(1))
@@ -221,8 +231,6 @@ def read_metrics_from_global_summary(filepath: str) -> pd.DataFrame:
         else:
             return pd.DataFrame()
 
-        # Estrai Average attack success score e Attack success rate dalla
-        # sezione "Qwen Attack Evaluation Summary"
         qwen_start = content.find("=== Qwen Attack Evaluation Summary ===")
         if qwen_start != -1:
             qwen_section = content[qwen_start:qwen_start + 500]
@@ -233,7 +241,6 @@ def read_metrics_from_global_summary(filepath: str) -> pd.DataFrame:
             else:
                 return pd.DataFrame()
 
-            # Cerca "Attack success rate: X.XXXX" (es. 0.1800)
             rate_match = re.search(r'Attack success rate:\s+([\d.]+)', qwen_section)
             if rate_match:
                 rate_value = float(rate_match.group(1))
@@ -242,11 +249,8 @@ def read_metrics_from_global_summary(filepath: str) -> pd.DataFrame:
         else:
             return pd.DataFrame()
 
-        # Nome del metodo = nome della directory che contiene il file
         method_name = extract_method_from_path(filepath)
-        # Nome della pipeline = componente del path (SD_Inpainting, ecc.)
         pipeline_name = extract_pipeline_from_path(filepath)
-        # Nome di configurazione completo, usato come etichetta unica
         config_name = f"{method_name} ({pipeline_name})"
 
         data['lpips_subject'].append(lpips_value)
@@ -256,129 +260,89 @@ def read_metrics_from_global_summary(filepath: str) -> pd.DataFrame:
         data['method'].append(method_name)
         data['pipeline'].append(pipeline_name)
 
-        df = pd.DataFrame(data)
-        return df
+        return pd.DataFrame(data)
 
     except Exception as e:
-        print(f"Errore nel parsing di {filepath}: {e}")
+        print(f"Error parsing {filepath}: {e}")
         return pd.DataFrame()
 
 
 def load_all_data(file_paths: List[str]) -> pd.DataFrame:
-    """
-    Carica i dati da tutti i file forniti.
-    """
+    """Carica i dati da tutti i file forniti per un dataset."""
     all_data = []
 
     for filepath in file_paths:
         if not Path(filepath).exists():
-            print(f"⚠️  Attenzione: Il file {filepath} non esiste, skippato.")
+            print(f"Warning: file not found, skipped: {filepath}")
             continue
 
         try:
-            if filepath.endswith('.csv'):
-                df = read_metrics_from_csv(filepath)
-                # Se il CSV non porta già method/pipeline, provo a derivarli dal path
-                if 'method' not in df.columns:
-                    df['method'] = extract_method_from_path(filepath)
-                if 'pipeline' not in df.columns:
-                    df['pipeline'] = extract_pipeline_from_path(filepath)
-            elif filepath.endswith('global_summary.txt'):
-                df = read_metrics_from_global_summary(filepath)
-            elif filepath.endswith('.txt'):
-                df = read_metrics_from_global_summary(filepath)
-            else:
-                print(f"⚠️  Formato non riconosciuto: {filepath}")
-                continue
+            df = read_metrics_from_global_summary(filepath)
 
             if df.empty:
-                print(f"⚠️  Nessun dato valido trovato in: {filepath}")
+                print(f"Warning: no valid data found in: {filepath}")
                 continue
 
-            print(f"✓ Caricato {filepath} ({len(df)} righe)")
+            print(f"Loaded {filepath} ({len(df)} rows)")
             all_data.append(df)
 
         except Exception as e:
-            print(f"❌ Errore nel caricamento di {filepath}: {e}")
+            print(f"Error loading {filepath}: {e}")
             continue
 
     if not all_data:
-        raise ValueError("Nessun dato caricato. Verifica i percorsi!")
+        return pd.DataFrame()
 
     return pd.concat(all_data, ignore_index=True)
 
 
 def build_color_map(methods: List[str]) -> Dict[str, str]:
-    """
-    Assegna un colore base di BASE_COLORS a ciascun metodo, in ordine
-    di apparizione, riciclando la palette se ci sono più metodi che
-    colori disponibili.
-    """
-    color_map = {}
-    for idx, method in enumerate(methods):
-        color_map[method] = BASE_COLORS[idx % len(BASE_COLORS)]
-    return color_map
+    """Assegna un colore base a ciascun metodo, riciclando la palette se
+    necessario."""
+    return {method: BASE_COLORS[idx % len(BASE_COLORS)] for idx, method in enumerate(methods)}
 
 
-def create_plot(
+def plot_dataset_on_axis(
+    ax: plt.Axes,
     df: pd.DataFrame,
-    y_column: str = 'qwen_score',
-    y_label: str = 'Qwen Attack Success Score (1-7)',
-    title: str = 'Relazione tra LPIPS del Subject e Qwen Score',
-    output_path: str = "lpips_vs_qwen.png",
-):
+    title: str,
+    y_column: str,
+    y_label: str,
+) -> List[Patch]:
     """
-    Crea un bar plot raggruppato per METODO (configurazione), con
-    l'asse x etichettato dal Subject LPIPS di ciascun metodo.
+    Disegna il bar plot di un singolo dataset sull'axis fornito.
 
-    Per ogni metodo vengono disegnate 4 barre affiancate:
-        - 3 barre, una per PIPELINE (Inpainting / Img2Img /
-          InstructionPix2Pix), colorate con la sfumatura chiara/media/
-          scura del colore base del metodo
-        - 1 barra "Media", con il colore pieno (non sfumato) del
-          metodo e un hatch, che rappresenta la media delle 3 barre
-          precedenti
-
-    Y-axis: colonna indicata da y_column (es. 'qwen_score' oppure
-            'attack_success_rate')
-    X-axis: Subject LPIPS (Original vs Immunized) del metodo; i gruppi
-            sono ordinati in ordine crescente di questo valore.
+    Ritorna la lista di handle della legenda "Task / Aggregate"
+    (pipeline + Average), identica per costruzione in ogni dataset,
+    cosi' che il chiamante possa riusarla una sola volta per l'intera
+    figura.
     """
-
-    # Rimuovi righe con valori mancanti sulla metrica di interesse o su LPIPS
     df_clean = df.dropna(subset=[y_column, 'lpips_subject'])
 
-    if len(df_clean) == 0:
-        raise ValueError("Nessun dato valido per il grafico!")
+    if df_clean.empty:
+        ax.set_title(f"{title} (no data)", fontsize=13, fontweight='bold')
+        ax.axis('off')
+        return []
 
-    # Subject LPIPS medio per metodo (in teoria è costante tra le pipeline
-    # dello stesso metodo, dato che dipende solo dall'immagine immunizzata;
-    # la media serve solo come protezione in caso di piccole discrepanze)
     lpips_by_method = df_clean.groupby('method')['lpips_subject'].mean()
 
-    # Metodi ordinati per Subject LPIPS crescente (determina anche il
-    # colore base e la posizione dei gruppi di barre sull'asse x)
     methods = sorted(
         list(dict.fromkeys(df_clean['method'])),
         key=lambda m: lpips_by_method[m]
     )
     color_map = build_color_map(methods)
 
-    # Pipeline presenti nei dati, ordinate secondo PIPELINE_ORDER quando possibile
     pipelines_present = list(dict.fromkeys(df_clean['pipeline']))
     pipelines_sorted = [p for p in PIPELINE_ORDER if p in pipelines_present] + \
                         [p for p in pipelines_present if p not in PIPELINE_ORDER]
 
-    # Le barre disegnate per ogni metodo: le pipeline + la barra "Media"
-    bar_names = pipelines_sorted + ['Media']
+    bar_names = pipelines_sorted + ['Average']
     n_bars = len(bar_names)
     n_groups = len(methods)
 
     x = np.arange(n_groups)
     group_width = 0.8
     bar_width = group_width / n_bars
-
-    fig, ax = plt.subplots(figsize=(max(12, n_groups * 2.2), 8))
 
     for j, bar_name in enumerate(bar_names):
         offset = (j - (n_bars - 1) / 2) * bar_width
@@ -388,10 +352,10 @@ def create_plot(
         for method in methods:
             base_color = color_map[method]
 
-            if bar_name == 'Media':
+            if bar_name == 'Average':
                 subset = df_clean[df_clean['method'] == method]
                 value = subset[y_column].mean() if not subset.empty else np.nan
-                color = base_color  # colore pieno, non sfumato
+                color = base_color
             else:
                 subset = df_clean[(df_clean['method'] == method) & (df_clean['pipeline'] == bar_name)]
                 value = subset[y_column].mean() if not subset.empty else np.nan
@@ -401,7 +365,7 @@ def create_plot(
             values.append(value)
             colors.append(color)
 
-        hatch = '////' if bar_name == 'Media' else None
+        hatch = '////' if bar_name == 'Average' else None
 
         ax.bar(
             x + offset,
@@ -413,132 +377,105 @@ def create_plot(
             hatch=hatch,
         )
 
-    # Etichette dell'asse x: nome visualizzato del metodo + valore di
-    # Subject LPIPS, per ciascun metodo
     xtick_labels = [f"{display_name(m)}\n({lpips_by_method[m]:.3f})" for m in methods]
     ax.set_xticks(x)
-    ax.set_xticklabels(xtick_labels, rotation=20, ha='right', fontsize=10)
-    ax.set_xlabel('Configurazione (Subject LPIPS)', fontsize=12, fontweight='bold')
-    ax.set_ylabel(y_label, fontsize=12, fontweight='bold')
-    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.set_xticklabels(xtick_labels, rotation=25, ha='right', fontsize=9)
+    ax.set_xlabel('Configuration (Subject LPIPS)', fontsize=11, fontweight='bold')
+    ax.set_ylabel(y_label, fontsize=11, fontweight='bold')
+    ax.set_title(title, fontsize=13, fontweight='bold')
     ax.grid(True, axis='y', alpha=0.3, linestyle='--')
 
-    # Legenda in due parti: colore = metodo (utile per sapere a quale
-    # metodo corrisponde ciascun valore di LPIPS sull'asse x), sfumatura/
-    # hatch = pipeline/media
-    method_handles = [
-        Patch(facecolor=color_map[m], edgecolor='black', label=display_name(m)) for m in methods
-    ]
-
+    # Legenda "Task / Aggregate" (uguale per ogni dataset): viene
+    # restituita al chiamante, che la disegnera' una sola volta per
+    # l'intera figura.
     pipeline_handles = []
     for pipeline in pipelines_sorted:
         lightness = PIPELINE_LIGHTNESS.get(pipeline, 0.5)
         c = shade_color(LEGEND_NEUTRAL_COLOR, lightness)
         pipeline_handles.append(Patch(facecolor=c, edgecolor='black', label=pipeline))
     pipeline_handles.append(
-        Patch(facecolor=LEGEND_NEUTRAL_COLOR, edgecolor='black', hatch='////', label='Media')
+        Patch(facecolor=LEGEND_NEUTRAL_COLOR, edgecolor='black', hatch='////', label='Average')
     )
 
-    legend1 = ax.legend(
-        handles=method_handles, title='Configurazione',
-        bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9
-    )
-    ax.add_artist(legend1)
-    ax.legend(
-        handles=pipeline_handles, title='Task / Aggregato',
-        bbox_to_anchor=(1.05, 0.55), loc='upper left', fontsize=9
-    )
+    return pipeline_handles
 
-    plt.tight_layout()
+
+def create_combined_figure(
+    datasets: List[Dict[str, object]],
+    y_column: str = 'attack_success_rate',
+    y_label: str = 'Attack Success Rate',
+    suptitle: str = 'Subject LPIPS vs Attack Success Rate',
+    output_path: str = "lpips_vs_attack_success_rate_combined.png",
+) -> None:
+    """
+    Crea un'unica figura con un sottografico per dataset (in orizzontale)
+    e un'unica legenda "Task / Aggregate" condivisa, in fondo alla figura.
+    """
+    n_datasets = len(datasets)
+    fig, axes = plt.subplots(1, n_datasets, figsize=(7 * n_datasets, 8))
+
+    if n_datasets == 1:
+        axes = [axes]
+
+    shared_legend_handles: List[Patch] = []
+
+    for ax, dataset in zip(axes, datasets):
+        name = dataset["name"]
+        files = dataset["files"]
+
+        if not files:
+            ax.set_title(f"{name} (not configured)", fontsize=13, fontweight='bold')
+            ax.axis('off')
+            continue
+
+        df = load_all_data(files)
+
+        if df.empty:
+            ax.set_title(f"{name} (no data)", fontsize=13, fontweight='bold')
+            ax.axis('off')
+            continue
+
+        handles = plot_dataset_on_axis(ax, df, title=name, y_column=y_column, y_label=y_label)
+        if handles and not shared_legend_handles:
+            shared_legend_handles = handles
+
+    fig.suptitle(suptitle, fontsize=16, fontweight='bold')
+
+    if shared_legend_handles:
+        fig.legend(
+            handles=shared_legend_handles,
+            title='Task / Aggregate',
+            loc='lower center',
+            ncol=len(shared_legend_handles),
+            bbox_to_anchor=(0.5, -0.05),
+            fontsize=10,
+        )
+
+    plt.tight_layout(rect=(0, 0.03, 1, 0.95))
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    print(f"✓ Grafico salvato: {output_path}")
+    print(f"Figure saved: {output_path}")
     plt.show()
 
 
-def print_statistics(df: pd.DataFrame):
-    """
-    Stampa statistiche dei dati caricati.
-    """
-    print("\n" + "=" * 70)
-    print("STATISTICHE DEI DATI")
-    print("=" * 70)
-    print(f"Totale configurazioni caricate: {len(df)}")
-    print(f"\nSubject LPIPS:")
-    print(f"  Min:    {df['lpips_subject'].min():.6f}")
-    print(f"  Max:    {df['lpips_subject'].max():.6f}")
-    print(f"  Media:  {df['lpips_subject'].mean():.6f}")
-    print(f"  Mediana: {df['lpips_subject'].median():.6f}")
-    print(f"\nQwen Score:")
-    print(f"  Min:    {df['qwen_score'].min():.4f}")
-    print(f"  Max:    {df['qwen_score'].max():.4f}")
-    print(f"  Media:  {df['qwen_score'].mean():.4f}")
-    print(f"  Mediana: {df['qwen_score'].median():.4f}")
-    if 'attack_success_rate' in df.columns and df['attack_success_rate'].notna().any():
-        print(f"\nAttack Success Rate:")
-        print(f"  Min:    {df['attack_success_rate'].min():.4f}")
-        print(f"  Max:    {df['attack_success_rate'].max():.4f}")
-        print(f"  Media:  {df['attack_success_rate'].mean():.4f}")
-        print(f"  Mediana: {df['attack_success_rate'].median():.4f}")
-    print("=" * 70 + "\n")
-
-
 def main():
-    """
-    Funzione principale.
-    """
     print("\n" + "=" * 70)
-    print("GENERATORE GRAFICI: LPIPS vs QWEN SCORE / ATTACK SUCCESS RATE")
+    print("COMBINED CHART GENERATOR: LPIPS vs ATTACK SUCCESS RATE (3 datasets)")
     print("=" * 70)
 
-    # Verifica che i file siano configurati
-    if not DATA_FILES:
-        print("❌ ERRORE: Nessun file configurato in DATA_FILES!")
-        print("Modifica lo script e aggiungi i percorsi ai tuoi file.")
+    if not any(d["files"] for d in DATASETS):
+        print("ERROR: No files configured in DIFFVAX_FILES / MAGICBRUSH_FILES / TEDBENCH_FILES!")
+        print("Edit the script and add the paths to your files.")
         sys.exit(1)
 
-    # Carica i dati
-    print("\nCaricamento dati...")
-    try:
-        df = load_all_data(DATA_FILES)
-    except Exception as e:
-        print(f"❌ Errore: {e}")
-        sys.exit(1)
+    create_combined_figure(
+        DATASETS,
+        y_column='attack_success_rate',
+        y_label='Attack Success Rate',
+        suptitle='Subject LPIPS vs Attack Success Rate',
+        output_path="lpips_vs_attack_success_rate_combined.png",
+    )
 
-    # Stampa statistiche
-    print_statistics(df)
-
-    # --- Grafico 1: Qwen Average Score vs Subject LPIPS ---
-    print("Creazione grafico 1/2: Subject LPIPS vs Qwen Score medio...")
-    try:
-        create_plot(
-            df,
-            y_column='qwen_score',
-            y_label='Qwen Attack Success Score (1-7)',
-            title='Relazione tra Subject LPIPS e Qwen Score',
-            output_path="lpips_vs_qwen_score_scelta_target.png",
-        )
-    except Exception as e:
-        print(f"❌ Errore nella creazione del grafico 1: {e}")
-        sys.exit(1)
-
-    # --- Grafico 2: Attack Success Rate vs Subject LPIPS ---
-    if 'attack_success_rate' in df.columns and df['attack_success_rate'].notna().any():
-        print("\nCreazione grafico 2/2: Subject LPIPS vs Attack Success Rate...")
-        try:
-            create_plot(
-                df,
-                y_column='attack_success_rate',
-                y_label='Attack Success Rate',
-                title='Relazione tra Subject LPIPS e Attack Success Rate',
-                output_path="lpips_vs_attack_success_rate_scelta_target.png",
-            )
-        except Exception as e:
-            print(f"❌ Errore nella creazione del grafico 2: {e}")
-            sys.exit(1)
-    else:
-        print("\n⚠️  Nessun dato di 'attack_success_rate' disponibile: grafico 2 saltato.")
-
-    print("\n✅ Completato!")
+    print("\nDone!")
 
 
 if __name__ == "__main__":
