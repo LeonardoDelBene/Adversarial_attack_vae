@@ -24,8 +24,15 @@ NOTA: solo i dataset per cui e' stata popolata almeno una lista di file
 sottografico della figura finale. Se e' popolato un solo dataset, la
 figura risultante contiene un solo grafico (non 3, con 2 vuoti).
 
+NOTA 2: la stessa CONFIGURAZIONE (basata sul nome visualizzato, cioe' il
+valore restituito da display_name()) ha lo stesso colore in tutti i
+sottografici, anche se la chiave "raw" del metodo e' diversa tra un
+dataset e l'altro (es. 'VAE_MSE_TARGET_OPT_NOISE_ALL' su DiffVax e
+'MagicBrush_TARGET_OPT_NOISE_ALL' su MagicBrush condividono la stessa
+etichetta "Ours [target Opt, noise All]" e quindi lo stesso colore).
+
 Tutti i testi disegnati nel grafico (titoli, assi, legenda) sono in
-inglese.
+inglese, tranne il prefisso "Dataset:" richiesto esplicitamente.
 """
 
 import re
@@ -45,13 +52,13 @@ from matplotlib.patches import Patch
 # CONFIGURAZIONE: un set di file (global_summary.txt) per ciascun dataset.
 # ============================================================================
 DIFFVAX_FILES: List[str] = [
-    'output/SD_Inpainting/full_dataset/VAE_MSE_BLACK/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/VAE_MSE_BLACK/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/VAE_MSE_BLACK/global_summary.txt',
+    'output/SD_Inpainting/full_dataset/DiffVax/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/DiffVax/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/DiffVax/global_summary.txt',
 
-    'output/SD_Inpainting/full_dataset/VAE_MSE_WHITE/global_summary.txt',
-    'output/SD_Img2Img/full_dataset/VAE_MSE_WHITE/global_summary.txt',
-    'output/InstructionPix2Pix/full_dataset/VAE_MSE_WHITE/global_summary.txt',
+    'output/SD_Inpainting/full_dataset/PhotoGuard/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/PhotoGuard/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/PhotoGuard/global_summary.txt',
 
     'output/SD_Inpainting/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt',
         'output/SD_Img2Img/full_dataset/VAE_MSE_FT_2_STAGE/global_summary.txt',
@@ -61,18 +68,58 @@ DIFFVAX_FILES: List[str] = [
         'output/SD_Img2Img/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt',
         'output/InstructionPix2Pix/full_dataset/VAE_MSE_TARGET_OPT/global_summary.txt',
 
-    'output/SD_Inpainting/full_dataset/VAE_MSE_MEAN/global_summary.txt',
-        'output/SD_Img2Img/full_dataset/VAE_MSE_MEAN/global_summary.txt',
-        'output/InstructionPix2Pix/full_dataset/VAE_MSE_MEAN/global_summary.txt',
+    'output/SD_Inpainting/full_dataset/VAE_MSE_FT_2_STAGE_NOSIE_ALL/global_summary.txt',
+        'output/SD_Img2Img/full_dataset/VAE_MSE_FT_2_STAGE_NOSIE_ALL/global_summary.txt',
+        'output/InstructionPix2Pix/full_dataset/VAE_MSE_FT_2_STAGE_NOSIE_ALL/global_summary.txt',
+
+    'output/SD_Inpainting/full_dataset/VAE_MSE_TARGET_OPT_NOISE_ALL/global_summary.txt',
+        'output/SD_Img2Img/full_dataset/VAE_MSE_TARGET_OPT_NOISE_ALL/global_summary.txt',
+        'output/InstructionPix2Pix/full_dataset/VAE_MSE_TARGET_OPT_NOISE_ALL/global_summary.txt',
     
 ]
 
 MAGICBRUSH_FILES: List[str] = [
-    
+    'output/SD_Inpainting/full_dataset/MagicBrush_photoguard/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/MagicBrush_photoguard/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/MagicBrush_photoguard/global_summary.txt',
+
+    'output/SD_Inpainting/full_dataset/MagicBrush_gray_FT/global_summary.txt',
+    'output/SD_Img2Img/full_dataset/MagicBrush_gray_FT/global_summary.txt',
+    'output/InstructionPix2Pix/full_dataset/MagicBrush_gray_FT/global_summary.txt',
+
+    'output/SD_Inpainting/full_dataset/MagicBrush_gray_NOISE_ALL/global_summary.txt',
+        'output/SD_Img2Img/full_dataset/MagicBrush_gray_NOISE_ALL/global_summary.txt',
+        'output/InstructionPix2Pix/full_dataset/MagicBrush_gray_NOISE_ALL/global_summary.txt',
+
+    'output/SD_Inpainting/full_dataset/MagicBrush_target_opt/global_summary.txt',
+        'output/SD_Img2Img/full_dataset/MagicBrush_target_opt/global_summary.txt',
+        'output/InstructionPix2Pix/full_dataset/MagicBrush_target_opt/global_summary.txt',
+
+    'output/SD_Inpainting/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL/global_summary.txt',
+        'output/SD_Img2Img/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL/global_summary.txt',
+        'output/InstructionPix2Pix/full_dataset/MagicBrush_TARGET_OPT_NOISE_ALL/global_summary.txt',
 ]
 
 TEDBENCH_FILES: List[str] = [
+     'output/SD_Inpainting/full_dataset/TedBench_photoguard/global_summary.txt',
+        'output/SD_Img2Img/full_dataset/TedBench_photoguard/global_summary.txt',
+        'output/InstructionPix2Pix/full_dataset/TedBench_photoguard/global_summary.txt',
     
+        'output/SD_Inpainting/full_dataset/TedBench_diff_noise_mask_invert/global_summary.txt',
+        'output/SD_Img2Img/full_dataset/TedBench_diff_noise_mask_invert/global_summary.txt',
+        'output/InstructionPix2Pix/full_dataset/TedBench_diff_noise_mask_invert/global_summary.txt',
+    
+        'output/SD_Inpainting/full_dataset/TedBench_magic_noise_mask/global_summary.txt',
+            'output/SD_Img2Img/full_dataset/TedBench_magic_noise_mask/global_summary.txt',
+            'output/InstructionPix2Pix/full_dataset/TedBench_magic_noise_mask/global_summary.txt',
+    
+        'output/SD_Inpainting/full_dataset/TedBench_diff_noise_all/global_summary.txt',
+            'output/SD_Img2Img/full_dataset/TedBench_diff_noise_all/global_summary.txt',
+            'output/InstructionPix2Pix/full_dataset/TedBench_diff_noise_all/global_summary.txt',
+    
+        'output/SD_Inpainting/full_dataset/TedBench_magic_noise_all/global_summary.txt',
+            'output/SD_Img2Img/full_dataset/TedBench_magic_noise_all/global_summary.txt',
+            'output/InstructionPix2Pix/full_dataset/TedBench_magic_noise_all/global_summary.txt',
 ]
 
 # Ordine (e titolo) dei sottografici nella figura finale.
@@ -93,9 +140,9 @@ METHOD_LABELS: Dict[str, str] = {
     'TedBench_magic_noise_all': 'Ours [train MagicBrush, noise All]',
     'TedBench_magic_noise_mask': 'Ours [train MagicBrush, noise Mask]',
     'VAE_MSE_TARGET_OPT_NOISE_ALL': 'Ours [target Opt, noise All]',
-    'VAE_MSE_FT_2_STAGE_NOSIE_ALL': 'Gray',
-    'VAE_MSE_TARGET_OPT': 'Opt',
-    'VAE_MSE_FT_2_STAGE': 'Gray',
+    'VAE_MSE_FT_2_STAGE_NOSIE_ALL': 'Ours [target Gray, noise All]',
+    'VAE_MSE_TARGET_OPT': 'Ours [target Opt, noise Mask]',
+    'VAE_MSE_FT_2_STAGE': 'Ours [target Gray, noise Mask]',
     'MagicBrush_gray_NOISE_ALL': 'Ours [target Gray, noise All]',
     'MagicBrush_gray_FT': 'Ours [target Gray, noise Mask]',
     'MagicBrush_target_opt': 'Ours [target Opt, noise Mask]',
@@ -233,8 +280,31 @@ def load_all_data(file_paths: List[str]) -> pd.DataFrame:
     return pd.concat(all_data, ignore_index=True)
 
 
-def build_color_map(methods: List[str]) -> Dict[str, str]:
-    return {method: BASE_COLORS[idx % len(BASE_COLORS)] for idx, method in enumerate(methods)}
+def build_global_color_map(dataframes: List[pd.DataFrame]) -> Dict[str, str]:
+    """
+    Costruisce una mappa colore -> configurazione basata sul nome
+    VISUALIZZATO (display_name) della configurazione, cosi' che la
+    stessa configurazione abbia lo stesso colore in ogni sottografico,
+    anche quando la chiave "raw" del metodo differisce da un dataset
+    all'altro (es. 'MagicBrush_TARGET_OPT_NOISE_ALL' su MagicBrush e
+    'VAE_MSE_TARGET_OPT_NOISE_ALL' su DiffVax condividono la stessa
+    etichetta "Ours [target Opt, noise All]").
+
+    L'ordine di assegnazione dei colori segue l'ordine di prima
+    comparsa delle configurazioni attraverso i dataset (nell'ordine in
+    cui i dataframe vengono passati).
+    """
+    seen_labels: List[str] = []
+    for df in dataframes:
+        if df is None or df.empty:
+            continue
+        methods_in_df = list(dict.fromkeys(df['method']))
+        for method in methods_in_df:
+            label = display_name(method)
+            if label not in seen_labels:
+                seen_labels.append(label)
+
+    return {label: BASE_COLORS[idx % len(BASE_COLORS)] for idx, label in enumerate(seen_labels)}
 
 
 def plot_dataset_on_axis(
@@ -243,9 +313,13 @@ def plot_dataset_on_axis(
     title: str,
     y_column: str,
     y_label: str,
+    color_map: Dict[str, str],
 ) -> List[Patch]:
     """
     Disegna il bar plot di un singolo dataset sull'axis fornito.
+
+    ``color_map`` e' la mappa GLOBALE (condivisa tra tutti i dataset)
+    che associa ogni nome visualizzato di configurazione a un colore.
 
     Ritorna la lista di handle della legenda "Task / Aggregate"
     (pipeline + Average), identica per costruzione in ogni dataset,
@@ -265,7 +339,6 @@ def plot_dataset_on_axis(
         list(dict.fromkeys(df_clean['method'])),
         key=lambda m: lpips_by_method[m]
     )
-    color_map = build_color_map(methods)
 
     pipelines_present = list(dict.fromkeys(df_clean['pipeline']))
     pipelines_sorted = [p for p in PIPELINE_ORDER if p in pipelines_present] + \
@@ -285,7 +358,7 @@ def plot_dataset_on_axis(
         values = []
         colors = []
         for method in methods:
-            base_color = color_map[method]
+            base_color = color_map[display_name(method)]
 
             if bar_name == 'Average':
                 subset = df_clean[df_clean['method'] == method]
@@ -331,13 +404,13 @@ def create_combined_figure(
     datasets: List[Dict[str, object]],
     y_column: str = 'attack_success_rate',
     y_label: str = 'Attack Success Rate',
-    suptitle: str = 'Subject LPIPS vs Attack Success Rate',
     output_path: str = "lpips_vs_attack_success_rate_combined.png",
 ) -> None:
     """
     Crea una figura con un sottografico per ciascun dataset NON vuoto
     (in orizzontale) e un'unica legenda "Task / Aggregate" condivisa,
-    in fondo alla figura.
+    in fondo alla figura. La figura non ha un titolo generale; ogni
+    sottografico e' invece intitolato "Dataset: <nome>".
 
     Se e' popolato un solo dataset, la figura contiene un solo
     sottografico (non vengono creati subplot vuoti per gli altri).
@@ -348,28 +421,37 @@ def create_combined_figure(
         print("ERROR: no dataset has any file configured. Nothing to plot.")
         return
 
-    n_datasets = len(active_datasets)
+    # Primo passaggio: carica tutti i dataframe per poter costruire una
+    # mappa colore GLOBALE (stessa configurazione = stesso colore su
+    # tutti i sottografici).
+    loaded = []
+    for dataset in active_datasets:
+        df = load_all_data(dataset["files"])
+        loaded.append((dataset["name"], df))
+
+    color_map = build_global_color_map([df for _, df in loaded])
+
+    n_datasets = len(loaded)
     fig, axes = plt.subplots(1, n_datasets, figsize=(7 * n_datasets, 8), squeeze=False)
     axes = axes[0]
 
     shared_legend_handles: List[Patch] = []
 
-    for ax, dataset in zip(axes, active_datasets):
-        name = dataset["name"]
-        files = dataset["files"]
-
-        df = load_all_data(files)
+    for ax, (name, df) in zip(axes, loaded):
+        title = f"Dataset: {name}"
 
         if df.empty:
-            ax.set_title(f"{name} (no data)", fontsize=13, fontweight='bold')
+            ax.set_title(f"{title} (no data)", fontsize=13, fontweight='bold')
             ax.axis('off')
             continue
 
-        handles = plot_dataset_on_axis(ax, df, title=name, y_column=y_column, y_label=y_label)
+        handles = plot_dataset_on_axis(
+            ax, df, title=title, y_column=y_column, y_label=y_label, color_map=color_map,
+        )
         if handles and not shared_legend_handles:
             shared_legend_handles = handles
 
-    fig.suptitle(suptitle, fontsize=16, fontweight='bold')
+    # Nessun titolo generale della figura (rimosso su richiesta).
 
     if shared_legend_handles:
         fig.legend(
@@ -381,7 +463,7 @@ def create_combined_figure(
             fontsize=10,
         )
 
-    plt.tight_layout(rect=(0, 0.03, 1, 0.95))
+    plt.tight_layout(rect=(0, 0.03, 1, 1))
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     print(f"Figure saved: {output_path}")
     plt.show()
@@ -401,7 +483,6 @@ def main():
         DATASETS,
         y_column='attack_success_rate',
         y_label='Attack Success Rate',
-        suptitle='Attack Success Rate vs Mask LPIPS',
         output_path="lpips_vs_attack_success_rate_combined.png",
     )
 
